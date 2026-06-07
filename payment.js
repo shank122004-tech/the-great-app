@@ -603,352 +603,464 @@
       const u = window._firebaseAuth && window._firebaseAuth.currentUser;
       const p = u ? ('sscai_u:' + u.uid + ':') : 'sscai_guest:';
       isPrem = localStorage.getItem(p + 'premium') === 'true';
-      // ⚠️ Do NOT fall back to global 'sscai_premium' — leaks across users.
     } catch(e) {}
     if (typeof state !== 'undefined') { isPrem = isPrem || state.isPremium; state.isPremium = isPrem; }
     const curPlan = (typeof state !== 'undefined' ? state.premiumPlan : null) || (function(){ try{ const u=window._firebaseAuth&&window._firebaseAuth.currentUser; const p=u?('sscai_u:'+u.uid+':'):'sscai_guest:'; return localStorage.getItem(p+'premium_plan'); }catch(e){return null;} })() || null;
     const isGrpAdmin = isGroupAdmin();
     const grpPlan = getGroupPlan();
 
-    // ── Already subscribed banner ──
+    // ── Plan labels map ──
     const planLabels = { ssc:'SSC Pro', class10:'Class Pro', class12:'Class Pro', yearly:'All-in-One Pro Yearly',
       semiannual:'SSC 6-Month', battle:'Battle Basic', battle_pro:'Battle Pro', battle_academy:'Battle Academy',
       group_leader:'Group Leader', coaching_basic:'Coaching Starter', coaching_pro:'Coaching Pro', premium:'Premium' };
     const activePlanName = planLabels[curPlan] || planLabels[grpPlan] || 'Premium';
-    const alreadyActiveBanner = (isPrem || isGrpAdmin) ? `
-    <div style="background:linear-gradient(135deg,rgba(16,185,129,0.15),rgba(74,222,128,0.08));border:2px solid rgba(74,222,128,0.4);border-radius:14px;padding:16px;margin-bottom:16px;text-align:center;">
-      <div style="font-size:28px;margin-bottom:6px;">✅</div>
-      <div style="font-size:15px;font-weight:800;color:#4ade80;margin-bottom:4px;">You're already on ${activePlanName}!</div>
-      <div style="font-size:12px;color:rgba(200,255,200,0.65);margin-bottom:10px;">All premium features are active. Enjoy unlimited access.</div>
-      <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
-        <button onclick="closePremiumModal&&closePremiumModal()" style="padding:8px 20px;background:linear-gradient(135deg,#10b981,#4ade80);border:none;border-radius:9px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">✓ Got it — Close</button>
-      </div>
-    </div>` : '';
+
+    // Inject new styles
+    injectPremiumModalStyles();
+
+    // Render the new structured modal
     modal.innerHTML = `
-    <div style="text-align:center;padding:8px 0 12px;">
-      <div style="font-size:36px;margin-bottom:6px;">🚀</div>
-      <h2 style="font-size:19px;font-weight:800;background:linear-gradient(135deg,#6C63FF,#FF6B9D);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin:0 0 4px;">Upgrade to CrackAI Premium</h2>
-      <p style="font-size:12px;color:rgba(200,195,255,0.65);margin:0;">SSC + Class 10/12 • Study Groups • Battle Arena • Coaching</p>
+    <!-- Header -->
+    <div class="upg-header">
+      <h2 class="upg-title">Upgrade your plan</h2>
+      ${(isPrem || isGrpAdmin) ? `
+      <div class="upg-active-banner">
+        <span style="font-size:22px;">✅</span>
+        <div>
+          <div style="font-size:14px;font-weight:800;color:#4ade80;">You're on ${activePlanName}!</div>
+          <div style="font-size:11px;color:rgba(200,255,200,0.65);">All premium features active · Unlimited access</div>
+        </div>
+        <button onclick="closePremiumModal&&closePremiumModal()" class="upg-close-active-btn">Close ✕</button>
+      </div>` : ''}
+      <!-- Tab toggle -->
+      <div class="upg-tab-bar">
+        <button class="upg-tab upg-tab-active" id="upgTabPersonal" onclick="window._upgShowTab('personal')">Personal</button>
+        <button class="upg-tab" id="upgTabBattle" onclick="window._upgShowTab('battle')">Battle & Class</button>
+        <button class="upg-tab" id="upgTabBusiness" onclick="window._upgShowTab('business')">Business</button>
+      </div>
     </div>
-    ${alreadyActiveBanner}
-    ${isPrem ? '' : `<div style="background:linear-gradient(135deg,rgba(255,107,157,0.12),rgba(255,179,71,0.12));border:1px solid rgba(255,107,157,0.35);border-radius:10px;padding:10px 14px;margin-bottom:12px;text-align:center;">
-      <div style="font-size:13px;font-weight:700;color:#FF6B9D;">⚡ Free users miss 80% of exam content!</div>
-      <div style="font-size:11px;color:rgba(255,200,150,0.75);margin-top:3px;">Premium students score 2× higher on SSC mocks.</div>
-    </div>`}
 
-    <div style="display:flex;flex-direction:column;gap:12px;">
+    <!-- PERSONAL PLANS -->
+    <div id="upgPersonalPlans" class="upg-plans-grid">
 
-      <!-- SSC Pro Monthly -->
-      <div style="background:rgba(108,99,255,0.08);border:1px solid rgba(108,99,255,0.4);border-radius:14px;padding:16px;position:relative;">
-        <div style="position:absolute;top:-10px;left:16px;background:linear-gradient(135deg,#6C63FF,#FF6B9D);color:#fff;font-size:10px;font-weight:800;padding:2px 10px;border-radius:20px;">🏆 MOST POPULAR</div>
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
-          <span style="font-size:24px;">🎯</span>
-          <div>
-            <div style="font-weight:800;font-size:15px;color:#fff;">SSC Pro</div>
-            <div style="font-size:11px;color:rgba(200,195,255,0.6);">CGL · CHSL · GD · MTS · CPO</div>
-          </div>
-          <div style="margin-left:auto;text-align:right;">
-            <div style="font-size:22px;font-weight:800;color:#fff;">₹199<span style="font-size:12px;font-weight:400;color:rgba(200,195,255,0.5);">/mo</span></div>
-          </div>
+      <!-- Card 1: SSC Pro -->
+      <div class="upg-card ${(isPrem && (curPlan==='ssc'||curPlan==='premium')) ? 'upg-card-active' : ''}">
+        <div class="upg-card-name">SSC Pro</div>
+        <div class="upg-card-tagline">Crack SSC with AI power</div>
+        <div class="upg-price-row">
+          <span class="upg-price">₹199</span>
+          <span class="upg-price-per">INR / month (incl. GST)</span>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:12px;font-size:11px;color:rgba(200,195,255,0.75);">
-          <div>✅ Unlimited AI queries</div><div>✅ All 5 SSC exam modes</div>
-          <div>🧪 Mock Tests + analysis</div><div>📚 PYQ Bank 10,000+ Qs</div>
-          <div>✅ Image &amp; PDF solving</div><div>⚡ Unlimited Access</div>
-        </div>
-        <button onclick="handlePayment('ssc')" style="width:100%;padding:13px;background:linear-gradient(135deg,#6C63FF,#FF6B9D);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:800;cursor:pointer;box-shadow:0 4px 16px rgba(108,99,255,0.4);">
-          ${isPrem && curPlan==='ssc' ? '✅ Active Plan' : '💳 Start SSC Pro — ₹199/month'}
+        <button onclick="handlePayment('ssc')" class="upg-btn ${(isPrem && curPlan==='ssc') ? 'upg-btn-active' : 'upg-btn-primary'}">
+          ${(isPrem && curPlan==='ssc') ? 'Your current plan' : 'Upgrade to SSC Pro'}
         </button>
+        <ul class="upg-features">
+          <li>✦ Unlimited AI queries</li>
+          <li>✦ All 5 SSC exam modes (CGL · CHSL · GD · MTS · CPO)</li>
+          <li>✦ Mock Tests + detailed analysis</li>
+          <li>✦ PYQ Bank — 10,000+ questions</li>
+          <li>✦ Image &amp; PDF solving</li>
+          <li>✦ AI Teacher Voice Mode</li>
+          <li>✦ Battle Arena — compete live</li>
+        </ul>
       </div>
 
-      <!-- 6-Month SSC Plan - NEW -->
-      <div style="background:rgba(239,68,68,0.07);border:2px solid rgba(239,68,68,0.5);border-radius:14px;padding:16px;position:relative;">
-        <div style="position:absolute;top:-10px;left:16px;background:linear-gradient(135deg,#ef4444,#f59e0b);color:#fff;font-size:10px;font-weight:800;padding:2px 10px;border-radius:20px;">🔥 MOST POPULAR VALUE</div>
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
-          <span style="font-size:24px;">🔥</span>
+      <!-- Card 2: 6-Month Plan (highlighted / popular) -->
+      <div class="upg-card upg-card-popular ${(isPrem && curPlan==='semiannual') ? 'upg-card-active' : ''}">
+        <div class="upg-popular-badge">🔥 BEST VALUE</div>
+        <div class="upg-card-name">SSC 6-Month</div>
+        <div class="upg-card-tagline">Full exam cycle coverage</div>
+        <div class="upg-price-row">
           <div>
-            <div style="font-weight:800;font-size:15px;color:#fff;">SSC 6-Month Plan</div>
-            <div style="font-size:11px;color:rgba(200,195,255,0.6);">Perfect for CGL · CHSL · RRB · Banking prep cycles</div>
-          </div>
-          <div style="margin-left:auto;text-align:right;">
-            <div style="font-size:22px;font-weight:800;color:#f59e0b;">₹499<span style="font-size:12px;font-weight:400;color:rgba(200,195,255,0.5);">/6mo</span></div>
-            <div style="font-size:10px;color:rgba(200,195,255,0.4);text-decoration:line-through;">₹1,194</div>
+            <div class="upg-price-old">₹1,194</div>
+            <div style="display:flex;align-items:baseline;gap:4px;">
+              <span class="upg-price" style="color:#f59e0b;">₹499</span>
+              <span class="upg-price-per">/ 6 months</span>
+            </div>
+            <div class="upg-save-pill">Save ₹695 · Just ₹83/mo</div>
           </div>
         </div>
-        <div style="background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.25);border-radius:8px;padding:7px;margin-bottom:10px;text-align:center;font-size:12px;color:#f59e0b;font-weight:700;">₹499 for 6 months = just ₹83/month — Save ₹695!</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:12px;font-size:11px;color:rgba(200,195,255,0.75);">
-          <div>✅ Everything in SSC Pro</div><div>🧪 Unlimited Mock Tests</div>
-          <div>📚 Full PYQ Bank</div><div>⚡ Priority AI + Support</div>
-        </div>
-        <button onclick="handlePayment('semiannual')" style="width:100%;padding:13px;background:linear-gradient(135deg,#ef4444,#f59e0b);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:800;cursor:pointer;box-shadow:0 4px 16px rgba(239,68,68,0.4);">
-          ${isPrem && curPlan==='semiannual' ? '✅ Active Plan' : '🔥 Get 6-Month Plan — ₹499'}
+        <button onclick="handlePayment('semiannual')" class="upg-btn ${(isPrem && curPlan==='semiannual') ? 'upg-btn-active' : 'upg-btn-fire'}">
+          ${(isPrem && curPlan==='semiannual') ? 'Your current plan' : 'Get 6-Month Plan'}
         </button>
+        <ul class="upg-features">
+          <li>✦ Everything in SSC Pro</li>
+          <li>✦ Unlimited Mock Tests</li>
+          <li>✦ Full PYQ Bank access</li>
+          <li>✦ Priority AI responses</li>
+          <li>✦ Priority support</li>
+          <li>✦ Valid for 6 full months</li>
+          <li>✦ Perfect for CGL · CHSL · RRB cycles</li>
+        </ul>
       </div>
 
-      <!-- Yearly -->
-      <div style="background:rgba(245,158,11,0.07);border:1px solid rgba(245,158,11,0.45);border-radius:14px;padding:16px;position:relative;">
-        <div style="position:absolute;top:-10px;left:16px;background:linear-gradient(135deg,#f59e0b,#FF6B9D);color:#fff;font-size:10px;font-weight:800;padding:2px 10px;border-radius:20px;">⭐ BEST VALUE — SAVE ₹1,389</div>
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
-          <span style="font-size:24px;">🌟</span>
+      <!-- Card 3: Yearly All-in-One -->
+      <div class="upg-card ${(isPrem && curPlan==='yearly') ? 'upg-card-active' : ''}">
+        <div class="upg-card-name">All-in-One Yearly</div>
+        <div class="upg-card-tagline">Maximum productivity</div>
+        <div class="upg-price-row">
           <div>
-            <div style="font-weight:800;font-size:15px;color:#fff;">CrackAI Pro Yearly</div>
-            <div style="font-size:11px;color:rgba(200,195,255,0.6);">All Exams + All Classes + Full Platform</div>
-          </div>
-          <div style="margin-left:auto;text-align:right;">
-            <div style="font-size:22px;font-weight:800;color:#f59e0b;">₹999<span style="font-size:12px;font-weight:400;color:rgba(200,195,255,0.5);">/yr</span></div>
-            <div style="font-size:10px;color:rgba(200,195,255,0.4);text-decoration:line-through;">₹2,388/yr</div>
+            <div class="upg-price-old">₹2,388</div>
+            <div style="display:flex;align-items:baseline;gap:4px;">
+              <span class="upg-price" style="color:#a78bfa;">₹999</span>
+              <span class="upg-price-per">/ year (incl. GST)</span>
+            </div>
           </div>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:10px;font-size:11px;color:rgba(200,195,255,0.75);">
-          <div>✅ Everything in SSC Pro</div><div>✅ All Classes 1–12 CBSE</div>
-          <div>🧪 Unlimited Mock Tests</div><div>📚 Full PYQ Bank</div>
-          <div>💎 Only ₹83/month</div><div>⚡ Priority AI + Support</div>
-        </div>
-        <div style="background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.25);border-radius:8px;padding:7px;margin-bottom:10px;text-align:center;font-size:12px;color:#f59e0b;font-weight:700;">₹999/year = just ₹83/month (vs ₹199×12)</div>
-        <button onclick="handlePayment('yearly')" style="width:100%;padding:13px;background:linear-gradient(135deg,#f59e0b,#FF6B9D);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:800;cursor:pointer;box-shadow:0 4px 16px rgba(245,158,11,0.4);">
-          ${isPrem && curPlan==='yearly' ? '✅ Active Plan' : '🌟 Get All-in-One Pro — ₹999/year'}
+        <button onclick="handlePayment('yearly')" class="upg-btn ${(isPrem && curPlan==='yearly') ? 'upg-btn-active' : 'upg-btn-gold'}">
+          ${(isPrem && curPlan==='yearly') ? 'Your current plan' : 'Get Yearly Plan'}
         </button>
-      </div>
-
-      <!-- Class Pro -->
-      <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:16px;">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
-          <span style="font-size:24px;">📖</span>
-          <div>
-            <div style="font-weight:800;font-size:15px;color:#fff;">Class Pro</div>
-            <div style="font-size:11px;color:rgba(200,195,255,0.6);">Class 9–10 &amp; 11–12 CBSE</div>
-          </div>
-          <div style="margin-left:auto;">
-            <div style="font-size:22px;font-weight:800;color:#fff;">₹129<span style="font-size:12px;font-weight:400;color:rgba(200,195,255,0.5);">/mo</span></div>
-          </div>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:12px;font-size:11px;color:rgba(200,195,255,0.75);">
-          <div>✅ All subjects Class 9–12</div><div>🧪 Chapter-wise Mock Tests</div>
-          <div>✅ JEE/NEET concept base</div><div>📊 Board score predictor</div>
-        </div>
-        <button onclick="handlePayment('class10')" style="width:100%;padding:13px;background:linear-gradient(135deg,#6C63FF,#8B5CF6);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:800;cursor:pointer;box-shadow:0 4px 16px rgba(108,99,255,0.3);">
-          ${isPrem && (curPlan==='class10'||curPlan==='class12') ? '✅ Active Plan' : '💳 Start Class Pro — ₹129/month'}
-        </button>
-      </div>
-
-      <!-- ── BATTLE CREATOR TIERS ── -->
-      <div style="background:rgba(0,0,0,0.3);border:1px solid rgba(239,68,68,0.3);border-radius:14px;padding:16px 16px 10px;position:relative;">
-        <div style="position:absolute;top:-10px;left:16px;background:linear-gradient(135deg,#ef4444,#f59e0b);color:#fff;font-size:10px;font-weight:800;padding:2px 10px;border-radius:20px;">⚔️ BATTLE CREATOR PLANS</div>
-        <div style="font-size:11px;color:rgba(200,195,255,0.5);margin-bottom:12px;margin-top:4px;">Host live quiz battles • All users join for free</div>
-        <div style="display:flex;flex-direction:column;gap:8px;">
-          <!-- Basic -->
-          <div style="background:rgba(239,68,68,0.07);border:1px solid rgba(239,68,68,0.3);border-radius:12px;padding:12px;display:flex;align-items:center;gap:10px;">
-            <div style="flex:1;">
-              <div style="font-weight:700;font-size:13px;color:#fff;">⚔️ Basic</div>
-              <div style="font-size:11px;color:rgba(200,195,255,0.5);">10 battles/month · AI questions · Leaderboard</div>
-            </div>
-            <div style="text-align:right;">
-              <div style="font-size:16px;font-weight:800;color:#f59e0b;">₹99<span style="font-size:10px;color:rgba(200,195,255,0.4);">/mo</span></div>
-              <button onclick="handlePayment('battle')" style="margin-top:4px;padding:6px 12px;background:linear-gradient(135deg,#ef4444,#f59e0b);border:none;border-radius:8px;color:#fff;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">
-                ${isPrem && curPlan==='battle' ? '✅ Active' : '💳 Get Basic'}
-              </button>
-            </div>
-          </div>
-          <!-- Pro -->
-          <div style="background:rgba(239,68,68,0.12);border:1.5px solid rgba(239,68,68,0.5);border-radius:12px;padding:12px;display:flex;align-items:center;gap:10px;position:relative;">
-            <div style="position:absolute;top:-8px;right:12px;background:linear-gradient(135deg,#ef4444,#f59e0b);color:#fff;font-size:9px;font-weight:800;padding:2px 8px;border-radius:10px;">POPULAR</div>
-            <div style="flex:1;">
-              <div style="font-weight:700;font-size:13px;color:#fff;">⚔️⚔️ Pro</div>
-              <div style="font-size:11px;color:rgba(200,195,255,0.5);">100 battles/month · Custom branding · Private tournaments</div>
-            </div>
-            <div style="text-align:right;">
-              <div style="font-size:16px;font-weight:800;color:#f59e0b;">₹299<span style="font-size:10px;color:rgba(200,195,255,0.4);">/mo</span></div>
-              <button onclick="handlePayment('battle_pro')" style="margin-top:4px;padding:6px 12px;background:linear-gradient(135deg,#ef4444,#f59e0b);border:none;border-radius:8px;color:#fff;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">
-                ${isPrem && curPlan==='battle_pro' ? '✅ Active' : '💳 Get Pro'}
-              </button>
-            </div>
-          </div>
-          <!-- Academy -->
-          <div style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.4);border-radius:12px;padding:12px;display:flex;align-items:center;gap:10px;">
-            <div style="flex:1;">
-              <div style="font-weight:700;font-size:13px;color:#fff;">⚔️🏆 Academy</div>
-              <div style="font-size:11px;color:rgba(200,195,255,0.5);">Unlimited battles · Leaderboards · Student analytics</div>
-            </div>
-            <div style="text-align:right;">
-              <div style="font-size:16px;font-weight:800;color:#f59e0b;">₹499<span style="font-size:10px;color:rgba(200,195,255,0.4);">/mo</span></div>
-              <button onclick="handlePayment('battle_academy')" style="margin-top:4px;padding:6px 12px;background:linear-gradient(135deg,#f59e0b,#ef4444);border:none;border-radius:8px;color:#fff;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">
-                ${isPrem && curPlan==='battle_academy' ? '✅ Active' : '💳 Get Academy'}
-              </button>
-            </div>
-          </div>
-        </div>
-        <!-- Add-on packs shown if user has any battle plan -->
-        ${(isPrem && (curPlan==='battle'||curPlan==='battle_pro'||curPlan==='battle_academy')) ? `
-        <div style="margin-top:10px;border-top:1px solid rgba(255,255,255,0.07);padding-top:10px;">
-          <div style="font-size:12px;font-weight:700;color:rgba(200,195,255,0.7);margin-bottom:8px;">⚔️ Extra Battle Packs (Never Expire)</div>
-          <div style="display:flex;gap:8px;">
-            <button onclick="handlePayment('battle_extra_10')" style="flex:1;padding:10px 8px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.35);border-radius:10px;color:#fff;font-size:12px;font-weight:700;cursor:pointer;text-align:center;">
-              ⚔️ +10 Battles<br><span style="font-size:15px;color:#f59e0b;font-weight:800;">₹49</span>
-            </button>
-            <button onclick="handlePayment('battle_extra_25')" style="flex:1;padding:10px 8px;background:linear-gradient(135deg,rgba(239,68,68,0.15),rgba(245,158,11,0.12));border:1.5px solid rgba(245,158,11,0.45);border-radius:10px;color:#fff;font-size:12px;font-weight:700;cursor:pointer;text-align:center;">
-              ⚔️⚔️ +25 Battles<br><span style="font-size:15px;color:#f59e0b;font-weight:800;">₹99</span>
-            </button>
-          </div>
-        </div>` : ''}
-      </div>
-
-      <!-- ── STUDY GROUP & COACHING PLANS ── -->
-      <div style="background:rgba(16,185,129,0.05);border:1px solid rgba(16,185,129,0.3);border-radius:14px;padding:16px;position:relative;">
-        <div style="position:absolute;top:-10px;left:16px;background:linear-gradient(135deg,#10b981,#6C63FF);color:#fff;font-size:10px;font-weight:800;padding:2px 10px;border-radius:20px;">👥 GROUP & COACHING PLANS</div>
-        <div style="font-size:11px;color:rgba(200,195,255,0.5);margin-bottom:12px;margin-top:4px;">Admin pays monthly · Students join FREE with invite code</div>
-        <div style="display:flex;flex-direction:column;gap:8px;">
-          <!-- Group Leader -->
-          <div style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.3);border-radius:12px;padding:12px;">
-            <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:8px;">
-              <span style="font-size:20px;">👥</span>
-              <div style="flex:1;">
-                <div style="font-weight:800;font-size:13px;color:#fff;">Group Leader</div>
-                <div style="font-size:11px;color:rgba(200,195,255,0.5);">Create 1 study group · Members join free with code</div>
-              </div>
-              <div style="text-align:right;">
-                <div style="font-size:18px;font-weight:800;color:#10b981;">₹99<span style="font-size:10px;color:rgba(200,195,255,0.4);">/mo</span></div>
-              </div>
-            </div>
-            <div style="font-size:10px;color:rgba(255,200,100,0.7);margin-bottom:8px;">ℹ️ ₹99/month covers platform hosting costs so your group works perfectly. Your students join completely free.</div>
-            <button onclick="handlePayment('group_leader')" style="width:100%;padding:10px;background:linear-gradient(135deg,#10b981,#6C63FF);border:none;border-radius:9px;color:#fff;font-size:13px;font-weight:800;cursor:pointer;">
-              ${isGrpAdmin && grpPlan==='group_leader' ? '✅ Active — Manage Group →' : '👥 Get Group Leader — ₹99/month'}
-            </button>
-          </div>
-          <!-- Coaching Basic -->
-          <div style="background:rgba(108,99,255,0.08);border:1px solid rgba(108,99,255,0.3);border-radius:12px;padding:12px;">
-            <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:8px;">
-              <span style="font-size:20px;">🎓</span>
-              <div style="flex:1;">
-                <div style="font-weight:800;font-size:13px;color:#fff;">Coaching Plan — Starter</div>
-                <div style="font-size:11px;color:rgba(200,195,255,0.5);">Up to 3 groups · Student performance dashboard</div>
-              </div>
-              <div style="text-align:right;">
-                <div style="font-size:18px;font-weight:800;color:#a78bfa;">₹499<span style="font-size:10px;color:rgba(200,195,255,0.4);">/mo</span></div>
-              </div>
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:8px;font-size:11px;color:rgba(200,195,255,0.6);">
-              <div>📊 Real-time student dashboard</div><div>👥 Up to 3 study groups</div>
-              <div>📈 Per-student performance</div><div>🔑 Unique invite codes</div>
-            </div>
-            <button onclick="handlePayment('coaching_basic')" style="width:100%;padding:10px;background:linear-gradient(135deg,#6C63FF,#8B5CF6);border:none;border-radius:9px;color:#fff;font-size:13px;font-weight:800;cursor:pointer;">
-              ${isGrpAdmin && grpPlan==='coaching_basic' ? '✅ Active — View Dashboard →' : '🎓 Get Coaching Starter — ₹499/month'}
-            </button>
-          </div>
-          <!-- Coaching Pro -->
-          <div style="background:rgba(245,158,11,0.07);border:1px solid rgba(245,158,11,0.35);border-radius:12px;padding:12px;">
-            <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:8px;">
-              <span style="font-size:20px;">🏫</span>
-              <div style="flex:1;">
-                <div style="font-weight:800;font-size:13px;color:#fff;">Coaching Plan — Pro</div>
-                <div style="font-size:11px;color:rgba(200,195,255,0.5);">Unlimited groups · Advanced analytics · Priority support</div>
-              </div>
-              <div style="text-align:right;">
-                <div style="font-size:18px;font-weight:800;color:#f59e0b;">₹999<span style="font-size:10px;color:rgba(200,195,255,0.4);">/mo</span></div>
-              </div>
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:8px;font-size:11px;color:rgba(200,195,255,0.6);">
-              <div>📊 Full analytics dashboard</div><div>♾️ Unlimited groups</div>
-              <div>📈 Batch comparisons</div><div>⚡ Priority AI for students</div>
-            </div>
-            <button onclick="handlePayment('coaching_pro')" style="width:100%;padding:10px;background:linear-gradient(135deg,#f59e0b,#ef4444);border:none;border-radius:9px;color:#fff;font-size:13px;font-weight:800;cursor:pointer;">
-              ${isGrpAdmin && grpPlan==='coaching_pro' ? '✅ Active — View Dashboard →' : '🏫 Get Coaching Pro — ₹999/month'}
-            </button>
-          </div>
-        </div>
+        <ul class="upg-features">
+          <li><strong>Everything in 6-Month and:</strong></li>
+          <li>✦ SSC + Class 10 + Class 12 all exams</li>
+          <li>✦ Full platform access — 1 year</li>
+          <li>✦ Study Groups (join free)</li>
+          <li>✦ Battle Arena Pro features</li>
+          <li>✦ Fastest AI model priority</li>
+          <li>✦ Save ₹1,389 vs monthly</li>
+        </ul>
       </div>
 
     </div>
 
-    <div style="background:rgba(255,107,107,0.07);border:1px solid rgba(255,107,107,0.2);border-radius:10px;padding:12px;margin-top:10px;">
-      <div style="font-size:12px;font-weight:700;color:#ff6b6b;margin-bottom:7px;">🚫 Free users miss out on:</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:11px;color:rgba(200,195,255,0.55);">
-        <div>❌ Mock Tests &amp; analysis</div><div>❌ PYQ Bank (10,000+ Qs)</div>
-        <div>❌ Unlimited queries</div><div>❌ Chapter-wise tests</div>
+    <!-- BATTLE & CLASS PLANS -->
+    <!-- Row 1: Class Pro (full width intro) -->
+    <div id="upgBattlePlans" style="display:none;">
+
+      <!-- Class Pro — spans full width on its own row -->
+      <div class="upg-plans-grid upg-grid-1col" style="margin-bottom:10px;">
+        <div class="upg-card ${(isPrem && (curPlan==='class10'||curPlan==='class12')) ? 'upg-card-active' : ''}">
+          <div class="upg-card-name">📖 Class Pro</div>
+          <div class="upg-card-tagline">Class 9–10 &amp; 11–12 CBSE — Unlimited AI + Mock Tests + Voice Teacher</div>
+          <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+            <div class="upg-price-row" style="margin-bottom:0;">
+              <span class="upg-price">₹129</span>
+              <span class="upg-price-per">INR / month (incl. GST)</span>
+            </div>
+            <button onclick="handlePayment('class10')" class="upg-btn upg-btn-inline ${(isPrem && (curPlan==='class10'||curPlan==='class12')) ? 'upg-btn-active' : 'upg-btn-primary'}">
+              ${(isPrem && (curPlan==='class10'||curPlan==='class12')) ? 'Your current plan' : 'Get Class Pro →'}
+            </button>
+          </div>
+          <ul class="upg-features upg-features-row" style="margin-top:12px;">
+            <li>✦ All subjects Class 9–12</li>
+            <li>✦ Chapter-wise Mock Tests</li>
+            <li>✦ JEE / NEET concept base</li>
+            <li>✦ Board score predictor</li>
+            <li>✦ Image &amp; PDF solving</li>
+            <li>✦ AI Teacher Voice Mode</li>
+          </ul>
+        </div>
       </div>
-      <div style="font-size:11px;color:rgba(255,200,150,0.85);margin-top:8px;font-weight:600;text-align:center;">💡 Start today — ₹199/month. Cancel anytime.</div>
+
+      <!-- Battle Creator section label -->
+      <div class="upg-section-label">⚔️ Battle Creator Plans — You host, students join FREE</div>
+
+      <!-- Battle: Basic · Pro · Academy in 3 columns -->
+      <div class="upg-plans-grid" style="margin-bottom:0;">
+
+        <!-- Battle Basic -->
+        <div class="upg-card ${(isPrem && curPlan==='battle') ? 'upg-card-active' : ''}">
+          <div class="upg-card-name">Battle Basic</div>
+          <div class="upg-card-tagline">Start hosting quiz battles</div>
+          <div class="upg-price-row">
+            <span class="upg-price" style="color:#ef4444;">₹99</span>
+            <span class="upg-price-per">INR / month (incl. GST)</span>
+          </div>
+          <button onclick="handlePayment('battle')" class="upg-btn ${(isPrem && curPlan==='battle') ? 'upg-btn-active' : 'upg-btn-fire'}">
+            ${(isPrem && curPlan==='battle') ? 'Your current plan' : 'Get Battle Basic'}
+          </button>
+          <ul class="upg-features">
+            <li>✦ Host 10 battles / month</li>
+            <li>✦ All users join FREE</li>
+            <li>✦ Live leaderboards</li>
+            <li>✦ Basic analytics</li>
+            <li>✦ Custom quiz creation</li>
+          </ul>
+        </div>
+
+        <!-- Battle Pro (popular) -->
+        <div class="upg-card upg-card-popular ${(isPrem && curPlan==='battle_pro') ? 'upg-card-active' : ''}">
+          <div class="upg-popular-badge">⚔️ MOST POPULAR</div>
+          <div class="upg-card-name">Battle Creator Pro</div>
+          <div class="upg-card-tagline">Scale up your battle sessions</div>
+          <div class="upg-price-row">
+            <span class="upg-price" style="color:#ef4444;">₹299</span>
+            <span class="upg-price-per">INR / month (incl. GST)</span>
+          </div>
+          <button onclick="handlePayment('battle_pro')" class="upg-btn ${(isPrem && curPlan==='battle_pro') ? 'upg-btn-active' : 'upg-btn-fire'}">
+            ${(isPrem && curPlan==='battle_pro') ? 'Your current plan' : 'Get Battle Pro'}
+          </button>
+          <ul class="upg-features">
+            <li>✦ Host 100 battles / month</li>
+            <li>✦ All users join FREE</li>
+            <li>✦ Live leaderboards</li>
+            <li>✦ Advanced analytics</li>
+            <li>✦ Priority AI for battles</li>
+          </ul>
+        </div>
+
+        <!-- Battle Academy -->
+        <div class="upg-card ${(isPrem && curPlan==='battle_academy') ? 'upg-card-active' : ''}">
+          <div class="upg-card-name">Battle Academy</div>
+          <div class="upg-card-tagline">Unlimited scale + deep analytics</div>
+          <div class="upg-price-row">
+            <span class="upg-price" style="color:#f59e0b;">₹499</span>
+            <span class="upg-price-per">INR / month (incl. GST)</span>
+          </div>
+          <button onclick="handlePayment('battle_academy')" class="upg-btn ${(isPrem && curPlan==='battle_academy') ? 'upg-btn-active' : 'upg-btn-gold'}">
+            ${(isPrem && curPlan==='battle_academy') ? 'Your current plan' : 'Get Battle Academy'}
+          </button>
+          <ul class="upg-features">
+            <li><strong>Everything in Pro and:</strong></li>
+            <li>✦ Unlimited battles / month</li>
+            <li>✦ Student performance dashboard</li>
+            <li>✦ Batch leaderboards &amp; exports</li>
+            <li>✦ Priority support</li>
+          </ul>
+        </div>
+
+      </div>
     </div>
 
-    <div style="display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;margin-top:10px;font-size:10px;color:rgba(200,195,255,0.4);">
-      <span>🔒 Cashfree Secured</span><span>|</span><span>🏦 UPI · Cards · NetBanking</span><span>|</span><span>↩️ 24hr Refund Policy</span>
+    <!-- Extra battle packs (shown when on any battle plan) -->
+    ${(isPrem && (curPlan==='battle'||curPlan==='battle_pro'||curPlan==='battle_academy')) ? `
+    <div id="upgBattleExtras" style="display:none;background:rgba(239,68,68,0.07);border:1px solid rgba(239,68,68,0.3);border-radius:14px;padding:14px;margin-bottom:14px;">
+      <div style="font-size:12px;font-weight:700;color:rgba(200,195,255,0.8);margin-bottom:10px;">⚔️ Extra Battle Packs (Never Expire)</div>
+      <div style="display:flex;gap:8px;">
+        <button onclick="handlePayment('battle_extra_10')" style="flex:1;padding:12px 8px;background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.4);border-radius:11px;color:#fff;font-size:12px;font-weight:700;cursor:pointer;text-align:center;">
+          ⚔️ +10 Battles<br><span style="font-size:16px;color:#f59e0b;font-weight:800;">₹49</span>
+        </button>
+        <button onclick="handlePayment('battle_extra_25')" style="flex:1;padding:12px 8px;background:linear-gradient(135deg,rgba(239,68,68,0.15),rgba(245,158,11,0.12));border:1.5px solid rgba(245,158,11,0.45);border-radius:11px;color:#fff;font-size:12px;font-weight:700;cursor:pointer;text-align:center;">
+          ⚔️⚔️ +25 Battles<br><span style="font-size:16px;color:#f59e0b;font-weight:800;">₹99</span>
+        </button>
+      </div>
+    </div>` : ''}
+
+    <!-- Also show Battle Basic entry plan in battle tab -->
+
+    <!-- BUSINESS PLANS -->
+    <div id="upgBusinessPlans" class="upg-plans-grid" style="display:none;">
+
+      <!-- Card 1: Group Leader -->
+      <div class="upg-card ${(isGrpAdmin && grpPlan==='group_leader') ? 'upg-card-active' : ''}">
+        <div class="upg-card-name">Group Leader</div>
+        <div class="upg-card-tagline">Create your study group</div>
+        <div class="upg-price-row">
+          <span class="upg-price">₹99</span>
+          <span class="upg-price-per">INR / month (incl. GST)</span>
+        </div>
+        <button onclick="handlePayment('group_leader')" class="upg-btn ${(isGrpAdmin && grpPlan==='group_leader') ? 'upg-btn-active' : 'upg-btn-green'}">
+          ${(isGrpAdmin && grpPlan==='group_leader') ? 'Active — Manage Group →' : 'Get Group Leader'}
+        </button>
+        <ul class="upg-features">
+          <li>✦ Create 1 study group</li>
+          <li>✦ Students join FREE with invite code</li>
+          <li>✦ Group AI chat & shared sessions</li>
+          <li>✦ Basic member tracking</li>
+          <li>✦ Unique invite link</li>
+        </ul>
+      </div>
+
+      <!-- Card 2: Coaching Starter (popular for business) -->
+      <div class="upg-card upg-card-popular ${(isGrpAdmin && grpPlan==='coaching_basic') ? 'upg-card-active' : ''}">
+        <div class="upg-popular-badge">👥 MOST POPULAR</div>
+        <div class="upg-card-name">Coaching Starter</div>
+        <div class="upg-card-tagline">For small coaching institutes</div>
+        <div class="upg-price-row">
+          <span class="upg-price">₹499</span>
+          <span class="upg-price-per">INR / month (incl. GST)</span>
+        </div>
+        <button onclick="handlePayment('coaching_basic')" class="upg-btn ${(isGrpAdmin && grpPlan==='coaching_basic') ? 'upg-btn-active' : 'upg-btn-primary'}">
+          ${(isGrpAdmin && grpPlan==='coaching_basic') ? 'Active — View Dashboard →' : 'Get Coaching Starter'}
+        </button>
+        <ul class="upg-features">
+          <li>✦ Up to 3 study groups</li>
+          <li>✦ Students join completely FREE</li>
+          <li>✦ Real-time student dashboard</li>
+          <li>✦ Per-student performance tracking</li>
+          <li>✦ Unique invite codes per group</li>
+          <li>✦ Group analytics &amp; progress</li>
+        </ul>
+      </div>
+
+      <!-- Card 3: Coaching Pro -->
+      <div class="upg-card ${(isGrpAdmin && grpPlan==='coaching_pro') ? 'upg-card-active' : ''}">
+        <div class="upg-card-name">Coaching Pro</div>
+        <div class="upg-card-tagline">Unlimited scale, full analytics</div>
+        <div class="upg-price-row">
+          <span class="upg-price" style="color:#f59e0b;">₹999</span>
+          <span class="upg-price-per">INR / month (incl. GST)</span>
+        </div>
+        <button onclick="handlePayment('coaching_pro')" class="upg-btn ${(isGrpAdmin && grpPlan==='coaching_pro') ? 'upg-btn-active' : 'upg-btn-gold'}">
+          ${(isGrpAdmin && grpPlan==='coaching_pro') ? 'Active — View Dashboard →' : 'Get Coaching Pro'}
+        </button>
+        <ul class="upg-features">
+          <li><strong>Everything in Starter and:</strong></li>
+          <li>✦ Unlimited study groups</li>
+          <li>✦ Full analytics dashboard</li>
+          <li>✦ Batch comparisons</li>
+          <li>✦ Priority AI for all students</li>
+          <li>✦ Advanced performance exports</li>
+          <li>✦ Priority support</li>
+        </ul>
+      </div>
+
+    </div>
+
+    <!-- Trust bar -->
+    <div class="upg-trust-bar">
+      <span>🔒 Cashfree Secured</span>
+      <span class="upg-trust-sep">|</span>
+      <span>🏦 UPI · Cards · NetBanking</span>
+      <span class="upg-trust-sep">|</span>
+      <span>↩️ 24hr Refund Policy</span>
     </div>
   `;
 
-        injectPremiumModalStyles();
-  };
+    // Tab switcher logic — 3 tabs
+    window._upgShowTab = function(tab) {
+      const personalEl = document.getElementById('upgPersonalPlans');
+      const battleEl   = document.getElementById('upgBattlePlans');
+      const businessEl = document.getElementById('upgBusinessPlans');
+      const battleExtrasEl = document.getElementById('upgBattleExtras');
+      const tabP = document.getElementById('upgTabPersonal');
+      const tabBt = document.getElementById('upgTabBattle');
+      const tabBs = document.getElementById('upgTabBusiness');
+      [personalEl, battleEl, businessEl].forEach(el => { if (el) el.style.display = 'none'; });
+      [tabP, tabBt, tabBs].forEach(el => { if (el) el.classList.remove('upg-tab-active'); });
+      if (tab === 'personal') {
+        if (personalEl) personalEl.style.display = '';
+        if (tabP) tabP.classList.add('upg-tab-active');
+        if (battleExtrasEl) battleExtrasEl.style.display = 'none';
+      } else if (tab === 'battle') {
+        if (battleEl) battleEl.style.display = '';
+        if (tabBt) tabBt.classList.add('upg-tab-active');
+        if (battleExtrasEl) battleExtrasEl.style.display = '';
+      } else {
+        if (businessEl) businessEl.style.display = '';
+        if (tabBs) tabBs.classList.add('upg-tab-active');
+        if (battleExtrasEl) battleExtrasEl.style.display = 'none';
+      }
+    };
+  }; // end renderPremiumModal — legacy code below removed and replaced
 
   function injectPremiumModalStyles() {
     if (document.getElementById('pf-styles')) return;
     const s = document.createElement('style');
     s.id = 'pf-styles';
     s.textContent = `
-      .pf-header{text-align:center;padding:0 0 20px}
-      .pf-badge{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#6C63FF;background:rgba(108,99,255,.12);border:1px solid rgba(108,99,255,.25);padding:4px 14px;border-radius:20px;margin-bottom:12px}
-      .pf-title{font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:700;color:#fff;margin:0 0 6px}
-      .pf-sub{font-size:13px;color:rgba(200,195,255,.6);margin:0 0 12px}
-      .pf-trust{display:flex;align-items:center;justify-content:center;gap:7px;flex-wrap:wrap;font-size:11px;color:rgba(200,195,255,.45)}
-      .pf-trust-sep{color:rgba(200,195,255,.2)}
-      .pf-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:18px 0}
-      @media(max-width:520px){.pf-cards{grid-template-columns:1fr}}
-      .pf-cards-single{display:flex;justify-content:center}
-      .pf-card-solo{max-width:240px;width:100%}
-      .pf-card{position:relative;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:18px 12px;text-align:center;transition:border-color .2s,transform .15s}
-      .pf-card:hover{border-color:rgba(108,99,255,.4);transform:translateY(-2px)}
-      .pf-card-popular{border-color:rgba(108,99,255,.45);background:rgba(108,99,255,.07);box-shadow:0 0 24px rgba(108,99,255,.12)}
-      .pf-card-active{border-color:rgba(16,185,129,.45);background:rgba(16,185,129,.06)}
-      .pf-popular-tag{position:absolute;top:-11px;left:50%;transform:translateX(-50%);font-size:10px;font-weight:700;background:linear-gradient(135deg,#6C63FF,#FF6B9D);color:#fff;padding:3px 12px;border-radius:20px;white-space:nowrap}
-      .pf-card-top{display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:10px}
-      .pf-plan-icon{font-size:20px}
-      .pf-plan-name{font-size:14px;font-weight:700;color:#fff}
-      .pf-plan-price{margin-bottom:12px}
-      .pf-price-amt{font-size:26px;font-weight:800;color:#fff}
-      .pf-price-per{font-size:12px;color:rgba(200,195,255,.4);margin-left:2px}
-      .pf-buy-btn{width:100%;padding:9px 0;background:linear-gradient(135deg,#6C63FF,#8B5CF6);border:none;border-radius:10px;color:#fff;font-size:12px;font-weight:700;cursor:pointer;transition:opacity .2s,transform .15s;letter-spacing:.02em}
-      .pf-buy-btn:hover:not(:disabled){opacity:.9;transform:scale(1.02)}
-      .pf-buy-btn:disabled{opacity:.6;cursor:default}
-      .pf-btn-active{background:rgba(16,185,129,.2);color:#10b981}
-      .pf-features{display:grid;grid-template-columns:1fr 1fr;gap:6px 16px;margin-bottom:16px}
-      @media(max-width:400px){.pf-features{grid-template-columns:1fr}}
-      .pf-feat{display:flex;gap:8px;align-items:flex-start;font-size:12px;color:rgba(200,195,255,.7);line-height:1.4}
-      .pf-feat span:first-child{flex-shrink:0}
-      .pf-footer{margin-top:4px}
-      .pf-stats{display:flex;align-items:center;justify-content:center;gap:16px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:12px;padding:12px}
-      .pf-stat{text-align:center}
-      .pf-stat-num{display:block;font-size:16px;font-weight:800;color:#fff}
-      .pf-stat-lbl{font-size:10px;color:rgba(200,195,255,.4);text-transform:uppercase;letter-spacing:.06em}
-      .pf-stat-sep{width:1px;height:28px;background:rgba(255,255,255,.08)}
-      .pf-section-divider{display:flex;align-items:center;gap:10px;margin:22px 0 8px;font-size:13px;font-weight:700;color:rgba(255,107,157,.9);letter-spacing:.04em}
-      .pf-section-divider::before,.pf-section-divider::after{content:'';flex:1;height:1px;background:rgba(255,107,157,.2)}
-      .pf-companion-sub{font-size:12px;color:rgba(200,180,220,.55);text-align:center;margin:0 0 12px;line-height:1.5}
-      .pf-companion-cards{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
-      @media(max-width:420px){.pf-companion-cards{grid-template-columns:1fr}}
-      .pf-companion-card{border-radius:16px;padding:16px 12px;text-align:center;border:1px solid rgba(255,107,157,.25);background:rgba(255,107,157,.05);transition:border-color .2s,transform .15s}
-      .pf-companion-card:hover{border-color:rgba(255,107,157,.5);transform:translateY(-2px)}
-      .pf-companion-bf{border-color:rgba(108,99,255,.3);background:rgba(108,99,255,.06)}
-      .pf-companion-bf:hover{border-color:rgba(108,99,255,.6)}
-      .pf-companion-emoji{font-size:26px;margin-bottom:5px}
-      .pf-companion-name{font-size:14px;font-weight:700;color:#fff;margin-bottom:4px}
-      .pf-companion-desc{font-size:11px;color:rgba(200,180,220,.6);line-height:1.45;margin-bottom:9px}
-      .pf-companion-feats{display:flex;flex-direction:column;gap:3px;margin-bottom:9px;text-align:left}
-      .pf-companion-feats span{font-size:10px;color:rgba(200,180,220,.7)}
-      .pf-companion-price{font-size:22px;font-weight:800;color:#FF6B9D;margin-bottom:10px}
-      .pf-companion-price-bf{color:#7C72FF}
-      .pf-companion-price span{font-size:10px;font-weight:400;color:rgba(200,180,220,.4);margin-left:2px}
-      .pf-companion-offer-banner{text-align:center;font-size:12px;color:rgba(220,210,255,0.7);background:rgba(255,107,157,0.08);border:1px solid rgba(255,107,157,0.2);border-radius:10px;padding:8px 12px;margin-bottom:10px;line-height:1.5}
-      .pf-companion-offer-tag{font-size:9px;font-weight:700;text-decoration:line-through;color:rgba(200,180,220,0.4);letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px}
-      .pf-companion-price-wrap{margin-bottom:10px}
-      .pf-companion-or{font-size:10px;color:rgba(200,180,220,0.35);margin:3px 0}
-      .pf-companion-yearly{font-size:18px;font-weight:800}
-      .pf-companion-yearly span{font-size:10px;font-weight:400;color:rgba(200,180,220,0.4);margin-left:2px}
-      .pf-companion-save-tag{display:inline-block;font-size:9px;font-weight:700;background:rgba(16,185,129,0.2);border:1px solid rgba(16,185,129,0.3);color:#10b981;padding:2px 6px;border-radius:20px;margin-left:4px;vertical-align:middle}
-      .pf-companion-btn{width:100%;padding:9px 4px;border:none;border-radius:10px;color:#fff;font-size:11px;font-weight:700;cursor:pointer;transition:opacity .2s,transform .15s;letter-spacing:.01em;line-height:1.3}
-      .pf-companion-btn:hover:not(:disabled){opacity:.88;transform:scale(1.02)}
-      .pf-companion-btn:disabled{opacity:.6;cursor:default}
-      .pf-companion-btn-gf{background:linear-gradient(135deg,#FF6B9D,#ff9a8b);box-shadow:0 3px 12px rgba(255,107,157,.35)}
-      .pf-companion-btn-bf{background:linear-gradient(135deg,#7C72FF,#6C63FF);box-shadow:0 3px 12px rgba(108,99,255,.35)}
-      .pf-companion-btn-renew{background:linear-gradient(135deg,#10b981,#059669);box-shadow:0 3px 12px rgba(16,185,129,.3)}
+      .upg-header { text-align:center; padding: 4px 0 16px; }
+      .upg-title { font-size:22px; font-weight:800; color:#fff; margin:0 0 14px; letter-spacing:-0.02em; }
+      .upg-active-banner {
+        display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+        background:linear-gradient(135deg,rgba(16,185,129,0.15),rgba(74,222,128,0.08));
+        border:2px solid rgba(74,222,128,0.4); border-radius:14px;
+        padding:12px 16px; margin-bottom:14px; text-align:left;
+      }
+      .upg-close-active-btn {
+        margin-left:auto; padding:7px 16px;
+        background:linear-gradient(135deg,#10b981,#4ade80);
+        border:none; border-radius:9px; color:#fff;
+        font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap;
+      }
+      .upg-tab-bar {
+        display:inline-flex; background:rgba(255,255,255,0.07);
+        border:1px solid rgba(255,255,255,0.12); border-radius:30px;
+        padding:3px; gap:2px; margin-bottom:18px;
+      }
+      .upg-tab {
+        padding:7px 24px; border-radius:26px; border:none;
+        background:transparent; color:rgba(200,195,255,0.55);
+        font-size:13px; font-weight:600; cursor:pointer;
+        transition:background .2s, color .2s;
+      }
+      .upg-tab-active { background:rgba(255,255,255,0.12); color:#fff; }
+      .upg-plans-grid {
+        display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:16px;
+      }
+      @media(max-width:640px) {
+        .upg-plans-grid { grid-template-columns:1fr; }
+        .upg-title { font-size:18px; }
+        .upg-tab { padding:7px 18px; font-size:12px; }
+      }
+      .upg-card {
+        position:relative; background:rgba(255,255,255,0.04);
+        border:1px solid rgba(255,255,255,0.1); border-radius:18px;
+        padding:20px 16px 16px; display:flex; flex-direction:column;
+        transition:border-color .2s, transform .15s, box-shadow .2s;
+      }
+      .upg-card:hover { border-color:rgba(108,99,255,0.4); transform:translateY(-2px); }
+      .upg-card-popular {
+        border-color:rgba(108,99,255,0.5); background:rgba(108,99,255,0.08);
+        box-shadow:0 0 28px rgba(108,99,255,0.15);
+      }
+      .upg-card-active {
+        border-color:rgba(16,185,129,0.5) !important; background:rgba(16,185,129,0.07) !important;
+      }
+      .upg-popular-badge {
+        position:absolute; top:-12px; left:50%; transform:translateX(-50%);
+        background:linear-gradient(135deg,#6C63FF,#FF6B9D); color:#fff;
+        font-size:10px; font-weight:800; padding:3px 14px; border-radius:20px;
+        white-space:nowrap; letter-spacing:0.05em;
+      }
+      .upg-card-name { font-size:17px; font-weight:800; color:#fff; margin-bottom:3px; margin-top:4px; }
+      .upg-card-tagline { font-size:11px; color:rgba(200,195,255,0.55); margin-bottom:14px; line-height:1.4; }
+      .upg-price-row { margin-bottom:14px; }
+      .upg-price { font-size:34px; font-weight:800; color:#fff; letter-spacing:-0.03em; line-height:1; }
+      .upg-price-per { display:block; font-size:11px; color:rgba(200,195,255,0.45); margin-top:3px; }
+      .upg-price-old { font-size:12px; color:rgba(200,195,255,0.35); text-decoration:line-through; margin-bottom:2px; }
+      .upg-save-pill {
+        display:inline-block; margin-top:5px; font-size:10px; font-weight:700;
+        background:rgba(16,185,129,0.2); border:1px solid rgba(16,185,129,0.35);
+        color:#10b981; padding:2px 9px; border-radius:20px;
+      }
+      .upg-btn {
+        width:100%; padding:12px 8px; border:none; border-radius:12px; color:#fff;
+        font-size:13px; font-weight:700; cursor:pointer;
+        transition:opacity .2s, transform .15s; letter-spacing:0.01em; margin-bottom:14px;
+      }
+      .upg-btn:hover:not(:disabled) { opacity:0.88; transform:scale(1.01); }
+      .upg-btn:disabled { opacity:0.6; cursor:default; }
+      .upg-btn-primary { background:linear-gradient(135deg,#6C63FF,#8B5CF6); box-shadow:0 4px 14px rgba(108,99,255,0.35); }
+      .upg-btn-fire    { background:linear-gradient(135deg,#ef4444,#f59e0b); box-shadow:0 4px 14px rgba(239,68,68,0.35); }
+      .upg-btn-gold    { background:linear-gradient(135deg,#f59e0b,#FF6B9D); box-shadow:0 4px 14px rgba(245,158,11,0.35); }
+      .upg-btn-green   { background:linear-gradient(135deg,#10b981,#6C63FF); box-shadow:0 4px 14px rgba(16,185,129,0.3); }
+      .upg-btn-active  { background:rgba(255,255,255,0.08); color:rgba(200,195,255,0.6); cursor:default; font-weight:600; }
+      .upg-features { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:7px; flex:1; }
+      .upg-features li { font-size:12px; color:rgba(200,195,255,0.72); line-height:1.4; }
+      .upg-features li strong {
+        color:rgba(200,195,255,0.9); display:block; margin-bottom:2px;
+        font-size:11px; text-transform:uppercase; letter-spacing:0.06em;
+      }
+      .upg-trust-bar {
+        display:flex; align-items:center; justify-content:center; gap:8px; flex-wrap:wrap;
+        font-size:10px; color:rgba(200,195,255,0.4); padding-top:4px;
+      }
+      .upg-trust-sep { color:rgba(200,195,255,0.2); }
+      /* Battle & Class tab extras */
+      .upg-section-label {
+        font-size:12px; font-weight:700; color:rgba(239,68,68,0.85);
+        letter-spacing:0.06em; text-transform:uppercase;
+        padding:8px 0 10px; text-align:center;
+      }
+      .upg-grid-1col { grid-template-columns:1fr !important; }
+      .upg-btn-inline {
+        width:auto !important; padding:10px 22px !important;
+        margin-bottom:0 !important; white-space:nowrap; flex-shrink:0;
+      }
+      .upg-features-row {
+        display:grid !important;
+        grid-template-columns:repeat(3,1fr) !important;
+        gap:5px 12px !important;
+      }
+      @media(max-width:640px) {
+        .upg-features-row { grid-template-columns:1fr 1fr !important; }
+        .upg-btn-inline { width:100% !important; margin-top:10px; }
+      }
     `;
     document.head.appendChild(s);
   }
+
 
   /* ─── ADDON MODAL ───────────────────────────────────────────── */
   window.openAddonModal = function (type) {
