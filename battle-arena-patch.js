@@ -594,47 +594,62 @@
 
     async _refreshBattleList() {
       const body = document.getElementById('ba-body');
-      if (!body || this._activeBattleId) return; // don't refresh if in a game
+      if (!body || this._activeBattleId) return;
 
-      // Guard: firebase not ready yet — retry in 1s silently
       if (!window._firebaseDb || !window._firebaseFns) {
         setTimeout(() => this._refreshBattleList(), 1000);
         return;
       }
 
+      const ACTIVE_STATUSES = ['waiting', 'generating', 'countdown', 'active'];
+      let battles = null;
+
+      // Attempt 1: composite index query (fastest, requires index)
       try {
         const db = window._firebaseDb;
         const { collection, query, where, getDocs, orderBy, limit } = window._firebaseFns;
-
-        // Fetch open battles (status = 'waiting' or 'countdown' or 'active')
         const q = query(
           collection(db, 'publicBattles'),
-          where('status', 'in', ['waiting', 'generating', 'countdown', 'active']),
+          where('status', 'in', ACTIVE_STATUSES),
           orderBy('createdAt', 'desc'),
           limit(20)
         );
         const snap = await getDocs(q);
-        const battles = snap.docs.map(d => ({ ...d.data(), id: d.id }));
-        this._renderBattleList(battles);
-      } catch(e) {
-        // Fallback: simpler query without orderBy (composite index may not exist yet)
+        battles = snap.docs.map(d => ({ ...d.data(), id: d.id }));
+      } catch(e) { /* index not ready — try next */ }
+
+      // Attempt 2: where-only query, no orderBy (works without composite index)
+      if (battles === null) {
         try {
           const db = window._firebaseDb;
           const { collection, query, where, getDocs } = window._firebaseFns;
-          const q = query(collection(db, 'publicBattles'), where('status', 'in', ['waiting', 'generating', 'countdown', 'active']));
+          const q = query(
+            collection(db, 'publicBattles'),
+            where('status', 'in', ACTIVE_STATUSES)
+          );
           const snap = await getDocs(q);
-          const battles = snap.docs.map(d => ({ ...d.data(), id: d.id }))
-            .sort((a,b) => (b.createdAt||0) - (a.createdAt||0)).slice(0,20);
-          this._renderBattleList(battles);
-        } catch(e2) {
-          // Both queries failed — show UI with create button anyway (don't block admin)
-          const body = document.getElementById('ba-body');
-          if (body && !this._activeBattleId) {
-            // Still render the create-battle UI — only the battle list part fails
-            this._renderBattleList([]);
-          }
-        }
+          battles = snap.docs.map(d => ({ ...d.data(), id: d.id }))
+            .sort((a,b) => (b.createdAt||0) - (a.createdAt||0))
+            .slice(0, 20);
+        } catch(e) { /* still failing — try full scan */ }
       }
+
+      // Attempt 3: full collection scan, filter client-side
+      // Always works as long as Firestore rules allow read for signed-in users
+      if (battles === null) {
+        try {
+          const db = window._firebaseDb;
+          const { collection, getDocs } = window._firebaseFns;
+          const snap = await getDocs(collection(db, 'publicBattles'));
+          battles = snap.docs
+            .map(d => ({ ...d.data(), id: d.id }))
+            .filter(b => ACTIVE_STATUSES.includes(b.status))
+            .sort((a,b) => (b.createdAt||0) - (a.createdAt||0))
+            .slice(0, 20);
+        } catch(e) { /* all attempts failed */ }
+      }
+
+      this._renderBattleList(battles || []);
     },
 
     _renderBattleList(battles) {
@@ -1063,6 +1078,7 @@
     _openBattle(battleId, battleData) {
       this._stopPolling();
       this._activeBattleId = battleId;
+      this._lastBattleData = battleData;  // stored so _backToList can check creator
       this._renderBattleRoom(battleData);
       // Start polling this battle
       this._pollGameInterval = setInterval(() => this._pollGameBattle(battleId), POLL_ACTIVE_GAME);
@@ -1524,11 +1540,16 @@
     },
 
     _backToList() {
-      // Mark battle as quit (hidden from list) and free the slot
       const battleId = this._activeBattleId;
       if (battleId) {
-        markBattleQuit(battleId);
-        removePlayerFromBattle(battleId);
+        const myUid = uid();
+        // Creators leaving should NOT hide their battle from the arena list.
+        // Only non-creators get their slot freed and the battle hidden from them.
+        const isCreator = this._lastBattleData && this._lastBattleData.creatorUid === myUid;
+        if (!isCreator) {
+          markBattleQuit(battleId);
+          removePlayerFromBattle(battleId);
+        }
       }
       this._stopPolling();
       this._activeBattleId = null;
