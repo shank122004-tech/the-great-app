@@ -162,29 +162,42 @@
 #authScreen *::after { box-sizing: border-box; }
 
 #authScreen {
-  /* Use fixed on desktop, but on mobile we rely on body scroll */
   position: fixed;
   inset: 0;
   z-index: 99000;
-  background: #f5f4f0;
+  background: #ffffff;
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-y: contain;
   font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
   color: #1c1c1e;
-  /* Critical: scroll starts at top */
   scroll-behavior: auto;
 }
 
-/* On mobile, body must be scrollable when authScreen is absolute */
+/* Mobile: ensure cai-layout grows to full content height so #authScreen can scroll it */
 @media (max-width: 640px) {
-  html, body {
-    overflow-x: hidden;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    height: auto;
-    min-height: 100%;
+  .cai-layout {
+    flex-direction: column !important;
+    min-height: max-content !important;
+    width: 100% !important;
+  }
+  .cai-left {
+    flex: none !important;
+    width: 100% !important;
+    height: auto !important;
+    padding: 32px 20px 24px !important;
+    border-right: none !important;
+    border-bottom: 1px solid #e5e2db !important;
+  }
+  .cai-right {
+    width: 100% !important;
+    padding: 24px 16px 60px !important;
+    height: auto !important;
+  }
+  .cai-btn-google {
+    font-size: 17px !important;
+    min-height: 60px !important;
   }
 }
 
@@ -515,40 +528,20 @@
    immediately without scrolling.
    ════════════════════════════════════════ */
 @media (max-width: 640px) {
-  /* On mobile: switch from fixed to absolute so the FULL page scrolls.
-     position:fixed clips content taller than the viewport — that is why
-     the logo/Google button were invisible. With absolute, the auth div
-     grows to fit all content and the page scrolls normally. */
-  #authScreen {
-    position: absolute !important;
-    top: 0 !important; left: 0 !important; right: 0 !important;
-    min-height: 100% !important;
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
-    -webkit-overflow-scrolling: touch !important;
-  }
-
-  /* Force html/body to scroll on mobile and not clip authScreen */
-  html, body {
-    height: auto !important;
-    min-height: 100% !important;
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
-    position: static !important;
-  }
+  /* authScreen is position:fixed with overflow-y:auto — it scrolls itself.
+     Do NOT touch html/body here — that breaks the chat app layout. */
 
   .cai-layout {
     flex-direction: column;
-    min-height: auto !important;
-    height: auto !important;
+    min-height: max-content;
+    height: auto;
   }
 
   .cai-left {
     flex: none !important;
     width: 100% !important;
-    min-height: auto !important;
     height: auto !important;
-    padding: 24px 20px 24px !important;
+    padding: 32px 20px 24px !important;
     justify-content: flex-start !important;
     align-items: stretch !important;
     border-right: none !important;
@@ -557,10 +550,10 @@
 
   .cai-right {
     width: 100%;
-    padding: 24px 16px 48px;
+    height: auto;
+    padding: 24px 16px 60px;
   }
 
-  /* ── Bigger, bolder Google button on phones ── */
   .cai-btn-google {
     font-size: 17px;
     padding: 18px 20px;
@@ -2255,39 +2248,31 @@ window.openPrivacyFromAuth = function() {
       if (m) m.classList.add('active');
     }, 250);
   };
+
   var authEl = document.getElementById('authScreen');
 
-  function fixMobileScroll() {
+  /* authScreen is position:fixed with overflow-y:auto — it handles
+     its own scrolling. We must NOT touch body/html position or overflow
+     because that breaks the chat app layout when auth is dismissed.
+     Just ensure the authScreen itself is correctly set up. */
+  function ensureAuthScroll() {
     if (!authEl || authEl.classList.contains('hidden')) return;
-    if (window.innerWidth > 640) return;
-    // Ensure body/html are not locked by app.js overflow:hidden
-    document.documentElement.style.overflow = 'auto';
-    document.documentElement.style.height = 'auto';
-    document.body.style.overflow = 'auto';
-    document.body.style.height = 'auto';
-    document.body.style.position = 'static';
+    // Force the authScreen element to scroll internally
+    authEl.style.overflowY = 'auto';
+    authEl.style.webkitOverflowScrolling = 'touch';
     authEl.scrollTop = 0;
-    window.scrollTo(0, 0);
   }
 
   if (authEl && window.MutationObserver) {
     new MutationObserver(function() {
       if (!authEl.classList.contains('hidden')) {
-        fixMobileScroll();
-        // Reset scroll position whenever auth screen is shown
-        authEl.scrollTop = 0;
-        window.scrollTo(0, 0);
-        document.documentElement.scrollTop = 0;
-        document.body.scrollTop = 0;
+        ensureAuthScroll();
       }
     }).observe(authEl, { attributes: true, attributeFilter: ['class'] });
   }
 
-  // Also reset on initial load
   if (authEl && !authEl.classList.contains('hidden')) {
-    fixMobileScroll();
-    authEl.scrollTop = 0;
-    window.scrollTo(0, 0);
+    ensureAuthScroll();
   }
 })();
 </script>
