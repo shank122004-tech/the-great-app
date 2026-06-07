@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CrackAI — Admin Dashboard</title>
+  <meta name="robots" content="noindex, nofollow"/>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:       #09090f;
+      --bg2:      #111118;
+      --bg3:      #18181f;
+      --bg4:      #1f1f28;
+      --border:   rgba(255,255,255,0.07);
+      --text:     #e8e8f0;
+      --muted:    #7878a0;
+      --accent:   #6C63FF;
+      --green:    #10b981;
+      --amber:    #f59e0b;
+      --red:      #ef4444;
+      --blue:     #38bdf8;
+      --pink:     #FF6B9D;
+    }
+    body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+    a { color: var(--accent); text-decoration: none; }
+    button { cursor: pointer; font-family: inherit; }
+
+    /* ── LOGIN ── */
+    #loginScreen { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: radial-gradient(ellipse at center, rgba(108,99,255,0.08) 0%, transparent 70%); }
+    .login-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 20px; padding: 44px 36px; width: 360px; text-align: center; box-shadow: 0 24px 80px rgba(0,0,0,0.6); }
+    .login-logo { font-size: 42px; margin-bottom: 12px; }
+    .login-card h1 { font-size: 22px; font-weight: 800; margin-bottom: 6px; }
+    .login-card p  { color: var(--muted); font-size: 14px; margin-bottom: 28px; line-height: 1.5; }
+    .login-btn { width: 100%; padding: 13px; background: linear-gradient(135deg, var(--accent), #a78bfa); color: #fff; border: none; border-radius: 12px; font-size: 15px; font-weight: 700; cursor: pointer; transition: opacity 0.2s; }
+    .login-btn:hover { opacity: 0.9; }
+    #loginError { color: var(--red); font-size: 13px; margin-top: 12px; display: none; }
+
+    /* ── DASHBOARD SHELL ── */
+    #dashboard { display: none; }
+    .dash-layout { display: flex; min-height: 100vh; }
+    .sidebar { width: 220px; flex-shrink: 0; background: var(--bg2); border-right: 1px solid var(--border); padding: 20px 0; position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; }
+    .sidebar-logo { padding: 0 20px 20px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+    .sidebar-logo-text { font-size: 18px; font-weight: 800; background: linear-gradient(135deg, var(--accent), var(--pink)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .sidebar-logo-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .nav-section { padding: 0 12px; margin-bottom: 6px; }
+    .nav-label { font-size: 10px; font-weight: 700; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; padding: 0 8px; margin-bottom: 4px; }
+    .nav-item { display: flex; align-items: center; gap: 9px; padding: 8px 10px; border-radius: 9px; font-size: 13px; font-weight: 500; color: rgba(232,232,240,0.7); cursor: pointer; transition: all 0.15s; border: none; background: none; width: 100%; text-align: left; }
+    .nav-item:hover { background: var(--bg3); color: var(--text); }
+    .nav-item.active { background: rgba(108,99,255,0.15); color: var(--accent); font-weight: 600; }
+    .nav-item-icon { font-size: 16px; width: 20px; text-align: center; }
+    .sidebar-footer { margin-top: auto; padding: 16px 20px; border-top: 1px solid var(--border); }
+    .admin-badge { font-size: 11px; color: var(--muted); background: var(--bg3); border-radius: 8px; padding: 6px 10px; }
+
+    /* ── MAIN CONTENT ── */
+    .main { flex: 1; overflow-y: auto; }
+    .topbar { display: flex; align-items: center; justify-content: space-between; padding: 16px 28px; border-bottom: 1px solid var(--border); background: var(--bg); position: sticky; top: 0; z-index: 10; }
+    .topbar-left { display: flex; flex-direction: column; }
+    .topbar-title { font-size: 17px; font-weight: 800; }
+    .topbar-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .topbar-right { display: flex; align-items: center; gap: 10px; }
+    .refresh-btn { padding: 7px 14px; background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+    .refresh-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .live-dot { width: 8px; height: 8px; background: var(--green); border-radius: 50%; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+    .content-area { padding: 24px 28px; }
+    #errorMsg { color: var(--red); font-size: 13px; padding: 12px 16px; background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.25); border-radius: 10px; margin-bottom: 18px; display: none; }
+
+    /* ── TABS ── */
+    .tab-bar { display: flex; gap: 4px; margin-bottom: 22px; background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 4px; width: fit-content; }
+    .tab-btn { padding: 7px 16px; border-radius: 9px; border: none; background: none; color: var(--muted); font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+    .tab-btn.active { background: var(--accent); color: #fff; }
+    .tab-pane { display: none; }
+    .tab-pane.active { display: block; }
+
+    /* ── METRICS GRID ── */
+    .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; margin-bottom: 22px; }
+    .metric-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px; position: relative; overflow: hidden; }
+    .metric-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; border-radius: 14px 14px 0 0; }
+    .metric-card.blue::before  { background: var(--blue); }
+    .metric-card.green::before { background: var(--green); }
+    .metric-card.amber::before { background: var(--amber); }
+    .metric-card.red::before   { background: var(--red); }
+    .metric-card.accent::before{ background: var(--accent); }
+    .metric-card.pink::before  { background: var(--pink); }
+    .metric-label { font-size: 11px; color: var(--muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
+    .metric-value { font-size: 26px; font-weight: 800; line-height: 1; }
+    .metric-card.blue  .metric-value { color: var(--blue); }
+    .metric-card.green .metric-value { color: var(--green); }
+    .metric-card.amber .metric-value { color: var(--amber); }
+    .metric-card.red   .metric-value { color: var(--red); }
+    .metric-card.accent.metric-value { color: var(--accent); }
+    .metric-card.pink  .metric-value { color: var(--pink); }
+    .metric-sub { font-size: 11px; color: var(--muted); margin-top: 5px; }
+    .metric-trend { font-size: 11px; margin-top: 4px; font-weight: 600; }
+    .metric-trend.up   { color: var(--green); }
+    .metric-trend.down { color: var(--red); }
+
+    /* ── CHARTS ── */
+    .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 22px; }
+    .charts-grid-3 { display: grid; grid-template-columns: 2fr 1fr; gap: 18px; margin-bottom: 22px; }
+    @media (max-width: 900px) { .charts-grid, .charts-grid-3 { grid-template-columns: 1fr; } }
+    .chart-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; padding: 20px; }
+    .chart-title { font-size: 14px; font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; }
+    .chart-title-badge { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 10px; background: rgba(108,99,255,0.15); color: var(--accent); }
+    .chart-wrap { position: relative; height: 200px; }
+
+    /* ── TABLES ── */
+    .table-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; padding: 20px; margin-bottom: 22px; overflow-x: auto; }
+    .table-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 8px; }
+    .table-title { font-size: 14px; font-weight: 700; }
+    .table-actions { display: flex; gap: 8px; align-items: center; }
+    .search-input { padding: 6px 12px; background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 12px; width: 200px; outline: none; }
+    .search-input:focus { border-color: var(--accent); }
+    table { width: 100%; border-collapse: collapse; font-size: 12.5px; min-width: 700px; }
+    th { text-align: left; padding: 9px 12px; color: var(--muted); font-weight: 600; border-bottom: 1px solid var(--border); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
+    td { padding: 11px 12px; border-bottom: 1px solid rgba(255,255,255,0.03); }
+    tr:hover td { background: var(--bg3); }
+    tr:last-child td { border-bottom: none; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; }
+    .badge.premium  { background: rgba(108,99,255,0.2); color: #a78bfa; }
+    .badge.free     { background: rgba(120,120,160,0.15); color: var(--muted); }
+    .badge.high     { background: rgba(239,68,68,0.2); color: var(--red); }
+    .badge.medium   { background: rgba(245,158,11,0.2); color: var(--amber); }
+    .badge.low      { background: rgba(16,185,129,0.15); color: var(--green); }
+    .badge.battle   { background: rgba(239,68,68,0.15); color: #f87171; }
+    .badge.coaching { background: rgba(56,189,248,0.15); color: var(--blue); }
+    .badge.group    { background: rgba(16,185,129,0.15); color: var(--green); }
+
+    /* ── SECTION CARDS ── */
+    .section-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 22px; }
+    @media (max-width: 768px) { .section-grid { grid-template-columns: 1fr; } }
+    .info-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; padding: 20px; }
+    .info-card-title { font-size: 13px; font-weight: 700; margin-bottom: 14px; color: var(--text); }
+    .info-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.04); font-size: 12.5px; }
+    .info-row:last-child { border: none; }
+    .info-key { color: var(--muted); }
+    .info-val { font-weight: 600; color: var(--text); }
+
+    /* ── REVENUE ── */
+    .rev-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+    .rev-card { background: var(--bg3); border: 1px solid var(--border); border-radius: 10px; padding: 14px; text-align: center; }
+    .rev-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; font-weight: 600; }
+    .rev-value { font-size: 20px; font-weight: 800; color: var(--amber); }
+    .rev-sub { font-size: 10px; color: var(--muted); margin-top: 3px; }
+
+    /* ── LOADING / EMPTY ── */
+    .loading { color: var(--muted); font-size: 13px; padding: 32px; text-align: center; }
+    .spinner { width: 20px; height: 20px; border: 2px solid rgba(108,99,255,0.3); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; display: inline-block; margin-right: 8px; vertical-align: middle; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .empty-state { text-align: center; padding: 40px; color: var(--muted); font-size: 13px; }
+    .empty-state-icon { font-size: 32px; margin-bottom: 8px; }
+
+    /* ── PLAN BREAKDOWN ── */
+    .plan-list { display: flex; flex-direction: column; gap: 8px; }
+    .plan-row { display: flex; align-items: center; gap: 10px; }
+    .plan-bar-wrap { flex: 1; height: 8px; background: rgba(255,255,255,0.06); border-radius: 4px; overflow: hidden; }
+    .plan-bar { height: 100%; border-radius: 4px; transition: width 0.6s; }
+    .plan-name { font-size: 12px; font-weight: 600; width: 130px; flex-shrink: 0; }
+    .plan-count { font-size: 12px; font-weight: 700; width: 36px; text-align: right; color: var(--amber); }
+
+    /* ── BATTLES TABLE ── */
+    .battle-status { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+    .battle-status.active { background: var(--red); animation: pulse 1.5s infinite; }
+    .battle-status.waiting { background: var(--green); }
+    .battle-status.finished { background: var(--muted); }
+  </style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="loginScreen">
+  <div class="login-card">
+    <div class="login-logo">🔐</div>
+    <h1>CrackAI Admin</h1>
+    <p>Sign in with your admin Google account to access the dashboard</p>
+    <button class="login-btn" onclick="adminLogin()">
+      <span>Sign in with Google</span>
+    </button>
+    <div id="loginError"></div>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashboard">
+  <div class="dash-layout">
+    <!-- Sidebar -->
+    <nav class="sidebar">
+      <div class="sidebar-logo">
+        <div class="sidebar-logo-text">CrackAI</div>
+        <div class="sidebar-logo-sub">Admin Dashboard</div>
+      </div>
+      <div class="nav-section">
+        <div class="nav-label">Overview</div>
+        <button class="nav-item active" onclick="switchTab('overview',this)"><span class="nav-item-icon">📊</span>Overview</button>
+        <button class="nav-item" onclick="switchTab('revenue',this)"><span class="nav-item-icon">💰</span>Revenue</button>
+      </div>
+      <div class="nav-section" style="margin-top:8px;">
+        <div class="nav-label">Users</div>
+        <button class="nav-item" onclick="switchTab('users',this)"><span class="nav-item-icon">👥</span>All Users</button>
+        <button class="nav-item" onclick="switchTab('premium',this)"><span class="nav-item-icon">⭐</span>Subscribers</button>
+      </div>
+      <div class="nav-section" style="margin-top:8px;">
+        <div class="nav-label">Features</div>
+        <button class="nav-item" onclick="switchTab('battles',this)"><span class="nav-item-icon">⚔️</span>Battles</button>
+        <button class="nav-item" onclick="switchTab('groups',this)"><span class="nav-item-icon">👨‍🏫</span>Groups</button>
+        <button class="nav-item" onclick="switchTab('leaderboard',this)"><span class="nav-item-icon">🏆</span>Leaderboard</button>
+      </div>
+      <div class="nav-section" style="margin-top:8px;">
+        <div class="nav-label">System</div>
+        <button class="nav-item" onclick="switchTab('analytics',this)"><span class="nav-item-icon">📈</span>Analytics</button>
+        <button class="nav-item" onclick="switchTab('logs',this)"><span class="nav-item-icon">🔍</span>Activity Logs</button>
+      </div>
+      <div class="sidebar-footer">
+        <div class="admin-badge" id="adminEmail">—</div>
+      </div>
+    </nav>
+
+    <!-- Main -->
+    <div class="main">
+      <div class="topbar">
+        <div class="topbar-left">
+          <div class="topbar-title" id="topbarTitle">Overview</div>
+          <div class="topbar-sub" id="lastUpdated">Loading...</div>
+        </div>
+        <div class="topbar-right">
+          <div class="live-dot"></div>
+          <button class="refresh-btn" onclick="loadDashboard()">↻ Refresh</button>
+          <button class="refresh-btn" onclick="adminSignOut()">Sign Out</button>
+        </div>
+      </div>
+      <div class="content-area">
+        <div id="errorMsg"></div>
+
+        <!-- ══ TAB: OVERVIEW ══ -->
+        <div class="tab-pane active" id="tab-overview">
+          <div class="metrics-grid" id="metricsGrid">
+            <div class="metric-card blue"><div class="metric-label">DAU Today</div><div class="metric-value" id="metDAU">—</div><div class="metric-sub">daily active users</div></div>
+            <div class="metric-card accent"><div class="metric-label">Total Users</div><div class="metric-value" id="metTotal">—</div><div class="metric-sub">registered accounts</div></div>
+            <div class="metric-card green"><div class="metric-label">Premium Users</div><div class="metric-value" id="metPremium">—</div><div class="metric-sub" id="metPremiumSub">paying subscribers</div></div>
+            <div class="metric-card amber"><div class="metric-label">Conversion</div><div class="metric-value" id="metConv">—</div><div class="metric-sub">free → premium</div></div>
+            <div class="metric-card red"><div class="metric-label">Churn Risk</div><div class="metric-value" id="metChurn">—</div><div class="metric-sub">high-risk users</div></div>
+            <div class="metric-card green"><div class="metric-label">D7 Retention</div><div class="metric-value" id="metRetention">—</div><div class="metric-sub">returned after 7 days</div></div>
+            <div class="metric-card pink"><div class="metric-label">Active Groups</div><div class="metric-value" id="metGroups">—</div><div class="metric-sub">study groups</div></div>
+            <div class="metric-card blue"><div class="metric-label">Live Battles</div><div class="metric-value" id="metBattles">—</div><div class="metric-sub">open/active</div></div>
+          </div>
+          <div class="charts-grid">
+            <div class="chart-card"><div class="chart-title">DAU — Last 14 Days<span class="chart-title-badge">TREND</span></div><div class="chart-wrap"><canvas id="dauChart"></canvas></div></div>
+            <div class="chart-card"><div class="chart-title">Messages Sent — Last 7 Days<span class="chart-title-badge">USAGE</span></div><div class="chart-wrap"><canvas id="msgChart"></canvas></div></div>
+            <div class="chart-card"><div class="chart-title">User Tiers<span class="chart-title-badge">SPLIT</span></div><div class="chart-wrap"><canvas id="tierChart"></canvas></div></div>
+            <div class="chart-card"><div class="chart-title">Churn Risk Breakdown<span class="chart-title-badge">RISK</span></div><div class="chart-wrap"><canvas id="churnChart"></canvas></div></div>
+          </div>
+        </div>
+
+        <!-- ══ TAB: REVENUE ══ -->
+        <div class="tab-pane" id="tab-revenue">
+          <div class="chart-card" style="margin-bottom:18px;">
+            <div class="chart-title">Estimated Monthly Revenue</div>
+            <div class="rev-grid" id="revGrid">
+              <div class="rev-card"><div class="rev-label">MRR (est.)</div><div class="rev-value" id="revMRR">—</div><div class="rev-sub">monthly recurring</div></div>
+              <div class="rev-card"><div class="rev-label">Premium (₹199)</div><div class="rev-value" id="revPremium">—</div><div class="rev-sub">SSC Pro subscribers</div></div>
+              <div class="rev-card"><div class="rev-label">Class Pro (₹129)</div><div class="rev-value" id="revClass">—</div><div class="rev-sub">Class plan subscribers</div></div>
+              <div class="rev-card"><div class="rev-label">Battle Plans</div><div class="rev-value" id="revBattle">—</div><div class="rev-sub">₹99–499/mo</div></div>
+              <div class="rev-card"><div class="rev-label">Coaching</div><div class="rev-value" id="revCoaching">—</div><div class="rev-sub">₹499–999/mo</div></div>
+              <div class="rev-card"><div class="rev-label">Yearly Plans</div><div class="rev-value" id="revYearly">—</div><div class="rev-sub">one-time annual</div></div>
+            </div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-title">Plan Distribution</div>
+            <div id="planDistribution" class="plan-list loading"><span class="spinner"></span>Loading...</div>
+          </div>
+        </div>
+
+        <!-- ══ TAB: USERS ══ -->
+        <div class="tab-pane" id="tab-users">
+          <div class="table-card">
+            <div class="table-header">
+              <div class="table-title">All Users — Recent 100</div>
+              <div class="table-actions">
+                <input type="text" class="search-input" id="userSearch" placeholder="Search name or email…" oninput="filterUsersTable(this.value)"/>
+              </div>
+            </div>
+            <table>
+              <thead><tr><th>Name</th><th>Email</th><th>Plan</th><th>Messages</th><th>Last Seen</th><th>Churn Risk</th><th>Joined</th></tr></thead>
+              <tbody id="usersTable"><tr><td colspan="7" class="loading"><span class="spinner"></span>Loading users...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- ══ TAB: PREMIUM ══ -->
+        <div class="tab-pane" id="tab-premium">
+          <div class="table-card">
+            <div class="table-header"><div class="table-title">Premium Subscribers</div></div>
+            <table>
+              <thead><tr><th>Name</th><th>Email</th><th>Plan</th><th>Activated</th><th>Messages</th><th>Last Active</th></tr></thead>
+              <tbody id="premiumTable"><tr><td colspan="6" class="loading"><span class="spinner"></span>Loading...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- ══ TAB: BATTLES ══ -->
+        <div class="tab-pane" id="tab-battles">
+          <div class="metrics-grid" style="grid-template-columns:repeat(4,1fr);">
+            <div class="metric-card red"><div class="metric-label">Live Now</div><div class="metric-value" id="bMetLive">—</div><div class="metric-sub">active battles</div></div>
+            <div class="metric-card green"><div class="metric-label">Open</div><div class="metric-value" id="bMetOpen">—</div><div class="metric-sub">waiting for players</div></div>
+            <div class="metric-card amber"><div class="metric-label">This Week</div><div class="metric-value" id="bMetWeek">—</div><div class="metric-sub">battles created</div></div>
+            <div class="metric-card blue"><div class="metric-label">Total Players</div><div class="metric-value" id="bMetPlayers">—</div><div class="metric-sub">in current battles</div></div>
+          </div>
+          <div class="table-card">
+            <div class="table-header"><div class="table-title">Active & Recent Battles</div></div>
+            <table>
+              <thead><tr><th>Status</th><th>Topic</th><th>Exam</th><th>Creator</th><th>Players</th><th>Created</th></tr></thead>
+              <tbody id="battlesTable"><tr><td colspan="6" class="loading"><span class="spinner"></span>Loading...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- ══ TAB: GROUPS ══ -->
+        <div class="tab-pane" id="tab-groups">
+          <div class="metrics-grid" style="grid-template-columns:repeat(4,1fr);">
+            <div class="metric-card blue"><div class="metric-label">Total Groups</div><div class="metric-value" id="gMetTotal">—</div><div class="metric-sub">study groups</div></div>
+            <div class="metric-card green"><div class="metric-label">Total Members</div><div class="metric-value" id="gMetMembers">—</div><div class="metric-sub">across all groups</div></div>
+            <div class="metric-card amber"><div class="metric-label">Coaching Pro</div><div class="metric-value" id="gMetPro">—</div><div class="metric-sub">pro plan groups</div></div>
+            <div class="metric-card accent"><div class="metric-label">Avg Members</div><div class="metric-value" id="gMetAvg">—</div><div class="metric-sub">per group</div></div>
+          </div>
+          <div class="table-card">
+            <div class="table-header"><div class="table-title">All Study Groups</div></div>
+            <table>
+              <thead><tr><th>Group Name</th><th>Exam</th><th>Admin</th><th>Members</th><th>Messages</th><th>Plan</th><th>Created</th></tr></thead>
+              <tbody id="groupsTable"><tr><td colspan="7" class="loading"><span class="spinner"></span>Loading...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- ══ TAB: LEADERBOARD ══ -->
+        <div class="tab-pane" id="tab-leaderboard">
+          <div class="table-card">
+            <div class="table-header"><div class="table-title">Weekly Battle Leaderboard (Top 50)</div></div>
+            <table>
+              <thead><tr><th>Rank</th><th>Name</th><th>Weekly XP</th><th>Battles</th><th>Wins</th><th>Level</th></tr></thead>
+              <tbody id="lbTable"><tr><td colspan="6" class="loading"><span class="spinner"></span>Loading...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- ══ TAB: ANALYTICS ══ -->
+        <div class="tab-pane" id="tab-analytics">
+          <div class="charts-grid">
+            <div class="chart-card"><div class="chart-title">DAU — Last 30 Days</div><div class="chart-wrap" style="height:220px;"><canvas id="dauChart30"></canvas></div></div>
+            <div class="chart-card"><div class="chart-title">Premium Growth</div><div class="chart-wrap" style="height:220px;"><canvas id="premiumGrowthChart"></canvas></div></div>
+          </div>
+          <div class="section-grid">
+            <div class="info-card">
+              <div class="info-card-title">📱 Platform Stats</div>
+              <div class="info-row"><span class="info-key">App Name</span><span class="info-val">CrackAI</span></div>
+              <div class="info-row"><span class="info-key">Free Msg Limit</span><span class="info-val">15/day</span></div>
+              <div class="info-row"><span class="info-key">Free Image Limit</span><span class="info-val">2/day</span></div>
+              <div class="info-row"><span class="info-key">Free PDF Limit</span><span class="info-val">1/day</span></div>
+              <div class="info-row"><span class="info-key">Battle Max Players</span><span class="info-val">10/battle</span></div>
+              <div class="info-row"><span class="info-key">Supported Exams</span><span class="info-val">SSC, Class 9-12, General</span></div>
+            </div>
+            <div class="info-card">
+              <div class="info-card-title">💳 Plan Pricing</div>
+              <div class="info-row"><span class="info-key">SSC Pro</span><span class="info-val" style="color:var(--amber);">₹199/mo</span></div>
+              <div class="info-row"><span class="info-key">Class Pro</span><span class="info-val" style="color:var(--amber);">₹129/mo</span></div>
+              <div class="info-row"><span class="info-key">All-in-One Yearly</span><span class="info-val" style="color:var(--amber);">₹999/yr</span></div>
+              <div class="info-row"><span class="info-key">Battle Creator Basic</span><span class="info-val" style="color:var(--amber);">₹99/mo</span></div>
+              <div class="info-row"><span class="info-key">Coaching Starter</span><span class="info-val" style="color:var(--amber);">₹499/mo</span></div>
+              <div class="info-row"><span class="info-key">Coaching Pro</span><span class="info-val" style="color:var(--amber);">₹999/mo</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ══ TAB: LOGS ══ -->
+        <div class="tab-pane" id="tab-logs">
+          <div class="table-card">
+            <div class="table-header"><div class="table-title">Recent User Activity</div></div>
+            <table>
+              <thead><tr><th>Time</th><th>User</th><th>Action</th><th>Details</th></tr></thead>
+              <tbody id="logsTable"><tr><td colspan="4" class="loading"><span class="spinner"></span>Loading activity...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+
+      </div><!-- content-area -->
+    </div><!-- main -->
+  </div><!-- dash-layout -->
+</div><!-- dashboard -->
+
+<script type="module">
+  import { initializeApp }           from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+  import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged }
+                                     from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+  import { getFirestore, collection, getDocs, getCountFromServer, query, orderBy, limit, where, doc, getDoc }
+                                     from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+  const firebaseConfig = {
+    apiKey:            "AIzaSyCUfUs2JHPM8GIVmxRm0gZQNgqAmvOPL6w",
+    authDomain:        "rankgpt-f8a64.firebaseapp.com",
+    projectId:         "rankgpt-f8a64",
+    storageBucket:     "rankgpt-f8a64.firebasestorage.app",
+    messagingSenderId: "419137308157",
+    appId:             "1:419137308157:web:70dca6c49579115a894594"
+  };
+
+  const ADMIN_EMAILS = ['shank122004@gmail.com'];
+
+  const app  = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db   = getFirestore(app);
+  const gp   = new GoogleAuthProvider();
+
+  // Cached data
+  let _users = [], _battles = [], _groups = [], _lb = [];
+
+  /* ── AUTH ── */
+  window.adminLogin = async function() {
+    try {
+      const r = await signInWithPopup(auth, gp);
+      if (!ADMIN_EMAILS.includes(r.user.email)) {
+        await signOut(auth);
+        showError('Access denied. Not an admin account.');
+      }
+    } catch(e) { showError(e.message); }
+  };
+  window.adminSignOut = () => signOut(auth);
+
+  onAuthStateChanged(auth, user => {
+    if (user && ADMIN_EMAILS.includes(user.email)) {
+      document.getElementById('loginScreen').style.display = 'none';
+      document.getElementById('dashboard').style.display = 'block';
+      document.getElementById('adminEmail').textContent = user.email;
+      loadDashboard();
+    } else {
+      document.getElementById('loginScreen').style.display = 'flex';
+      document.getElementById('dashboard').style.display = 'none';
+    }
+  });
+
+  /* ── TABS ── */
+  window.switchTab = function(tab, btn) {
+    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-' + tab).classList.add('active');
+    btn.classList.add('active');
+    const labels = { overview:'Overview', revenue:'Revenue', users:'Users', premium:'Subscribers', battles:'Battles', groups:'Study Groups', leaderboard:'Leaderboard', analytics:'Analytics', logs:'Activity Logs' };
+    document.getElementById('topbarTitle').textContent = labels[tab] || tab;
+    // Lazy-load tabs
+    if (tab === 'battles' && _battles.length === 0) loadBattles();
+    if (tab === 'groups'  && _groups.length === 0)  loadGroups();
+    if (tab === 'leaderboard' && _lb.length === 0)  loadLeaderboard();
+    if (tab === 'premium' && _users.length > 0) renderPremiumTable(_users.filter(u=>u.isPremium));
+  };
+
+  /* ── MAIN LOAD ── */
+  window.loadDashboard = async function() {
+    hideError();
+    document.getElementById('lastUpdated').textContent = 'Refreshing...';
+    try {
+      await Promise.all([loadUsers(), loadDAU(), loadMessages(), loadGroupsCount(), loadBattlesCount()]);
+      document.getElementById('lastUpdated').textContent = 'Last updated: ' + new Date().toLocaleTimeString('en-IN');
+    } catch(e) {
+      showError('Error loading data: ' + e.message);
+      document.getElementById('lastUpdated').textContent = 'Update failed';
+    }
+  };
+
+  /* ── USERS ── */
+  async function loadUsers() {
+    let totalReal = 0, premiumReal = 0;
+    try {
+      const [ts, ps] = await Promise.all([
+        getCountFromServer(collection(db, 'users')),
+        getCountFromServer(query(collection(db, 'users'), where('isPremium','==',true)))
+      ]);
+      totalReal   = ts.data().count;
+      premiumReal = ps.data().count;
+    } catch(e) {}
+
+    let users = [];
+    try {
+      const q = query(collection(db, 'users'), orderBy('lastSeen','desc'), limit(100));
+      const snap = await getDocs(q);
+      users = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      _users = users;
+    } catch(e) {
+      showError('Cannot read users. Fix Firestore rules. ' + e.message);
+      return;
+    }
+
+    if (totalReal === 0) { totalReal = users.length; premiumReal = users.filter(u=>u.isPremium).length; }
+    const convRate = totalReal > 0 ? ((premiumReal/totalReal)*100).toFixed(1) : '0';
+
+    set('metTotal',   totalReal.toLocaleString('en-IN'));
+    set('metPremium', premiumReal.toLocaleString('en-IN'));
+    set('metConv',    convRate + '%');
+
+    const churnH = users.filter(u=>u.churnRisk==='high').length;
+    const retD7  = users.filter(u=>u.retainedD7).length;
+    set('metChurn',     churnH);
+    set('metRetention', (users.length>0?((retD7/users.length)*100).toFixed(1):0) + '%');
+
+    renderUsersTable(users);
+    renderPlanDistribution(users);
+    renderRevenue(users);
+    renderTierChart(premiumReal, totalReal - premiumReal);
+    const churnM = users.filter(u=>u.churnRisk==='medium').length;
+    const churnL = users.filter(u=>!u.churnRisk||u.churnRisk==='low').length;
+    renderChurnChart(churnH, churnM, churnL);
+  }
+
+  async function loadGroupsCount() {
+    try {
+      const snap = await getDocs(collection(db, 'studyGroups'));
+      set('metGroups', snap.size);
+    } catch(e) { set('metGroups', '—'); }
+  }
+
+  async function loadBattlesCount() {
+    try {
+      const q = query(collection(db,'publicBattles'), where('status','in',['waiting','active','countdown']));
+      const snap = await getDocs(q);
+      const live = snap.docs.filter(d=>d.data().status==='active').length;
+      set('metBattles', snap.size);
+      set('bMetLive', live);
+      set('bMetOpen', snap.docs.filter(d=>d.data().status==='waiting').length);
+      const totalPlayers = snap.docs.reduce((s,d)=>s+((d.data().players||[]).length),0);
+      set('bMetPlayers', totalPlayers);
+    } catch(e) { set('metBattles','—'); }
+  }
+
+  /* ── DAU ── */
+  async function loadDAU() {
+    const labels = [], data = [], today = new Date();
+    for (let i = 13; i >= 0; i--) {
+      const d = new Date(today); d.setDate(d.getDate()-i);
+      const key = d.toISOString().slice(0,10);
+      labels.push(key.slice(5));
+      try { const s = await getDoc(doc(db,'analytics/dau/'+key)); data.push(s.exists()?(s.data().count||0):0); }
+      catch(e) { data.push(0); }
+    }
+    set('metDAU', data[data.length-1] || 0);
+    renderDAUChart(labels, data);
+  }
+
+  /* ── MESSAGES ── */
+  async function loadMessages() {
+    const labels=[], tD=[], iD=[], pD=[], today=new Date();
+    for (let i=6;i>=0;i--) {
+      const d=new Date(today); d.setDate(d.getDate()-i);
+      const key=d.toISOString().slice(0,10); labels.push(key.slice(5));
+      try { const s=await getDoc(doc(db,'analytics/messages/'+key)); const m=s.exists()?s.data():{}; tD.push(m.text||0); iD.push(m.image||0); pD.push(m.pdf||0); }
+      catch(e){ tD.push(0); iD.push(0); pD.push(0); }
+    }
+    renderMsgChart(labels, tD, iD, pD);
+  }
+
+  /* ── BATTLES ── */
+  window.loadBattles = async function() {
+    try {
+      const q = query(collection(db,'publicBattles'), orderBy('createdAt','desc'), limit(50));
+      const snap = await getDocs(q);
+      _battles = snap.docs.map(d=>({id:d.id,...d.data()}));
+      const weekAgo = Date.now() - 7*86400000;
+      set('bMetWeek', _battles.filter(b=>b.createdAt>weekAgo).length);
+      renderBattlesTable(_battles);
+    } catch(e) {
+      document.getElementById('battlesTable').innerHTML = `<tr><td colspan="6" style="color:var(--red);padding:16px;">Error: ${e.message}</td></tr>`;
+    }
+  };
+
+  /* ── GROUPS ── */
+  window.loadGroups = async function() {
+    try {
+      const snap = await getDocs(query(collection(db,'studyGroups'), orderBy('createdAt','desc'), limit(100)));
+      _groups = snap.docs.map(d=>({id:d.id,...d.data()}));
+      const totalMembers = _groups.reduce((s,g)=>s+(g.members||[]).length,0);
+      const proGroups = _groups.filter(g=>g.adminPlan==='coaching_pro').length;
+      const avg = _groups.length>0?Math.round(totalMembers/_groups.length):0;
+      set('gMetTotal', _groups.length);
+      set('gMetMembers', totalMembers);
+      set('gMetPro', proGroups);
+      set('gMetAvg', avg);
+      renderGroupsTable(_groups);
+    } catch(e) {
+      try {
+        const snap = await getDocs(collection(db,'studyGroups'));
+        _groups = snap.docs.map(d=>({id:d.id,...d.data()}));
+        set('gMetTotal', _groups.length);
+        set('gMetMembers', _groups.reduce((s,g)=>s+(g.members||[]).length,0));
+        renderGroupsTable(_groups);
+      } catch(e2) {
+        document.getElementById('groupsTable').innerHTML = `<tr><td colspan="7" style="color:var(--red);padding:16px;">Error: ${e2.message}</td></tr>`;
+      }
+    }
+  };
+
+  /* ── LEADERBOARD ── */
+  window.loadLeaderboard = async function() {
+    try {
+      const weekKey = getWeekKey();
+      let entries = [];
+      try {
+        const q = query(collection(db,'battleLeaderboard'), where('weekKey','==',weekKey), orderBy('xp','desc'), limit(50));
+        const snap = await getDocs(q); entries = snap.docs.map(d=>d.data());
+      } catch(e) {
+        const q2 = query(collection(db,'battleLeaderboard'), where('weekKey','==',weekKey));
+        const snap = await getDocs(q2); entries = snap.docs.map(d=>d.data()).sort((a,b)=>b.xp-a.xp).slice(0,50);
+      }
+      _lb = entries;
+      renderLeaderboardTable(entries);
+    } catch(e) {
+      document.getElementById('lbTable').innerHTML = `<tr><td colspan="6" style="color:var(--red);padding:16px;">Error: ${e.message}</td></tr>`;
+    }
+  };
+
+  /* ── RENDER FUNCTIONS ── */
+  function renderUsersTable(users) {
+    const tbody = document.getElementById('usersTable');
+    if (!users.length) { tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No users found</td></tr>'; return; }
+    tbody.innerHTML = users.map(u => {
+      const lastSeen = u.lastSeen ? new Date(u.lastSeen).toLocaleDateString('en-IN') : '—';
+      const joined   = u.createdAt ? new Date(u.createdAt).toLocaleDateString('en-IN') : '—';
+      const planLabel = getPlanLabel(u);
+      const planBadge = u.isPremium ? `<span class="badge premium">${planLabel}</span>` : '<span class="badge free">Free</span>';
+      const churnCls  = u.churnRisk || 'low';
+      return `<tr>
+        <td>${u.name||'—'}</td>
+        <td style="color:var(--muted);font-size:12px;">${u.email||'—'}</td>
+        <td>${planBadge}</td>
+        <td>${(u.totalMessages||0).toLocaleString('en-IN')}</td>
+        <td>${lastSeen}</td>
+        <td><span class="badge ${churnCls}">${u.churnRisk||'low'}</span></td>
+        <td>${joined}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  function renderPremiumTable(users) {
+    const tbody = document.getElementById('premiumTable');
+    if (!users.length) { tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No premium users found</td></tr>'; return; }
+    tbody.innerHTML = users.map(u => {
+      const act = u.premiumActivatedAt ? new Date(u.premiumActivatedAt).toLocaleDateString('en-IN') : '—';
+      const last = u.lastSeen ? new Date(u.lastSeen).toLocaleDateString('en-IN') : '—';
+      return `<tr>
+        <td>${u.name||'—'}</td>
+        <td style="color:var(--muted);font-size:12px;">${u.email||'—'}</td>
+        <td><span class="badge premium">${getPlanLabel(u)}</span></td>
+        <td>${act}</td>
+        <td>${(u.totalMessages||0).toLocaleString('en-IN')}</td>
+        <td>${last}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  function renderBattlesTable(battles) {
+    const tbody = document.getElementById('battlesTable');
+    if (!battles.length) { tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No battles found</td></tr>'; return; }
+    tbody.innerHTML = battles.map(b => {
+      const st = b.status||'unknown';
+      const dot = `<span class="battle-status ${st==='active'?'active':st==='waiting'?'waiting':'finished'}"></span>`;
+      const players = (b.players||[]).length;
+      const created = b.createdAt ? new Date(b.createdAt).toLocaleDateString('en-IN') : '—';
+      const creatorName = b.creatorName || (b.players&&b.players[0]?b.players[0].slice(0,8)+'…':'—');
+      return `<tr>
+        <td>${dot}${st}</td>
+        <td>${b.topic||b.subject||'—'}</td>
+        <td>${b.exam||'—'}</td>
+        <td style="font-size:12px;color:var(--muted);">${creatorName}</td>
+        <td>${players}/10</td>
+        <td>${created}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  function renderGroupsTable(groups) {
+    const tbody = document.getElementById('groupsTable');
+    if (!groups.length) { tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No groups found</td></tr>'; return; }
+    tbody.innerHTML = groups.map(g => {
+      const members = (g.members||[]).length;
+      const msgs = (g.messages||[]).length;
+      const created = g.createdAt ? new Date(g.createdAt).toLocaleDateString('en-IN') : '—';
+      const plan = g.adminPlan||'group_leader';
+      const planBadge = plan==='coaching_pro'?'<span class="badge coaching">Coaching Pro</span>':plan==='coaching_basic'?'<span class="badge group">Coaching Starter</span>':'<span class="badge free">Group Leader</span>';
+      return `<tr>
+        <td style="font-weight:600;">${g.name||'—'}</td>
+        <td>${g.exam||'—'}</td>
+        <td style="font-size:12px;color:var(--muted);">${g.adminName||'—'}</td>
+        <td><strong style="color:var(--green);">${members}</strong></td>
+        <td>${msgs}</td>
+        <td>${planBadge}</td>
+        <td>${created}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  function renderLeaderboardTable(entries) {
+    const tbody = document.getElementById('lbTable');
+    if (!entries.length) { tbody.innerHTML = '<tr><td colspan="6" class="empty-state"><div class="empty-state-icon">🏆</div>No battles played this week yet</td></tr>'; return; }
+    const TITLES = [
+      {min:0,max:9,t:'Beginner',e:'🌱'},{min:10,max:24,t:'Aspirant',e:'📘'},{min:25,max:49,t:'Expert',e:'⚡'},
+      {min:50,max:74,t:'SSC Master',e:'🏆'},{min:75,max:99,t:'Champion',e:'👑'},{min:100,max:9999,t:'Legend',e:'🌟'}
+    ];
+    tbody.innerHTML = entries.map((e,i) => {
+      const rank = ['🥇','🥈','🥉'][i] || `#${i+1}`;
+      const lv = Math.floor((e.xp||0)/10);
+      const lt = TITLES.find(t=>lv>=t.min&&lv<=t.max)||TITLES[0];
+      return `<tr>
+        <td style="font-size:16px;">${rank}</td>
+        <td style="font-weight:700;">${e.name||'Student'}</td>
+        <td style="font-weight:800;color:var(--amber);">${e.xp||0} XP</td>
+        <td>${e.battles||0}</td>
+        <td style="color:var(--green);font-weight:700;">${e.wins||0}</td>
+        <td>${lt.e} Lv.${lv} ${lt.t}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  function renderPlanDistribution(users) {
+    const counts = {};
+    users.forEach(u => {
+      const p = u.premiumPlan || (u.isPremium ? 'premium' : 'free');
+      counts[p] = (counts[p]||0) + 1;
+    });
+    const colorMap = {
+      ssc:'#6C63FF', class10:'#38bdf8', yearly:'#10b981', battle:'#ef4444',
+      battle_pro:'#f59e0b', coaching_pro:'#FF6B9D', coaching_basic:'#a78bfa',
+      free:'rgba(120,120,160,0.4)', premium:'#6C63FF'
+    };
+    const sorted = Object.entries(counts).sort((a,b)=>b[1]-a[1]);
+    const total = users.length;
+    const el = document.getElementById('planDistribution');
+    el.innerHTML = sorted.map(([plan, cnt]) => {
+      const pct = total>0?Math.round((cnt/total)*100):0;
+      const color = colorMap[plan]||'#6C63FF';
+      return `<div class="plan-row">
+        <div class="plan-name">${plan}</div>
+        <div class="plan-bar-wrap"><div class="plan-bar" style="width:${pct}%;background:${color};"></div></div>
+        <div class="plan-count">${cnt}</div>
+      </div>`;
+    }).join('');
+  }
+
+  function renderRevenue(users) {
+    const planPrices = { ssc:199, premium:199, class10:129, class10_yearly:1299, yearly:999, semiannual:499,
+      battle:99, battle_pro:299, battle_academy:499, group_leader:99, coaching_basic:499, coaching_pro:999 };
+    let mrr = 0, premiumRev = 0, classRev = 0, battleRev = 0, coachingRev = 0, yearlyRev = 0;
+    users.filter(u=>u.isPremium).forEach(u => {
+      const p = u.premiumPlan||'premium';
+      const price = planPrices[p]||199;
+      mrr += price;
+      if (['ssc','premium'].includes(p)) premiumRev += price;
+      else if (p.startsWith('class')) classRev += price;
+      else if (p.startsWith('battle')) battleRev += price;
+      else if (p.startsWith('coaching')) coachingRev += price;
+      else if (['yearly','class10_yearly'].includes(p)) yearlyRev += price;
+    });
+    const fmt = n => '₹'+n.toLocaleString('en-IN');
+    set('revMRR',      fmt(mrr));
+    set('revPremium',  fmt(premiumRev));
+    set('revClass',    fmt(classRev));
+    set('revBattle',   fmt(battleRev));
+    set('revCoaching', fmt(coachingRev));
+    set('revYearly',   fmt(yearlyRev));
+  }
+
+  /* ── USER SEARCH ── */
+  window.filterUsersTable = function(q) {
+    const s = q.toLowerCase();
+    const filtered = _users.filter(u =>
+      (u.name||'').toLowerCase().includes(s) || (u.email||'').toLowerCase().includes(s)
+    );
+    renderUsersTable(filtered);
+  };
+
+  /* ── CHARTS ── */
+  const charts = {};
+  function destroyChart(id) { if (charts[id]) { charts[id].destroy(); delete charts[id]; } }
+  const chartDefaults = {
+    scales: {
+      x: { ticks: { color: '#7878a0', font: { size: 11 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
+      y: { ticks: { color: '#7878a0', font: { size: 11 } }, grid: { color: 'rgba(255,255,255,0.04)' } }
+    },
+    plugins: { legend: { labels: { color: '#7878a0', font: { size: 11 }, boxWidth: 10 } } }
+  };
+
+  function renderDAUChart(labels, data) {
+    destroyChart('dau');
+    charts.dau = new Chart(document.getElementById('dauChart'), {
+      type:'bar', data:{ labels, datasets:[{ label:'DAU', data, backgroundColor:'rgba(108,99,255,0.6)', borderRadius:4 }] },
+      options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales: chartDefaults.scales }
+    });
+  }
+  function renderMsgChart(labels, tD, iD, pD) {
+    destroyChart('msg');
+    charts.msg = new Chart(document.getElementById('msgChart'), {
+      type:'bar', data:{ labels, datasets:[
+        { label:'Text', data:tD, backgroundColor:'rgba(56,189,248,0.7)', borderRadius:3 },
+        { label:'Image', data:iD, backgroundColor:'rgba(16,185,129,0.7)', borderRadius:3 },
+        { label:'PDF', data:pD, backgroundColor:'rgba(245,158,11,0.7)', borderRadius:3 }
+      ]},
+      options:{ responsive:true, maintainAspectRatio:false, ...chartDefaults, scales:{...chartDefaults.scales, x:{...chartDefaults.scales.x, stacked:true}, y:{...chartDefaults.scales.y, stacked:true}} }
+    });
+  }
+  function renderTierChart(premium, free) {
+    destroyChart('tier');
+    charts.tier = new Chart(document.getElementById('tierChart'), {
+      type:'doughnut', data:{ labels:['Premium','Free'], datasets:[{ data:[premium,free], backgroundColor:['rgba(108,99,255,0.85)','rgba(120,120,160,0.3)'], borderColor:['#6C63FF','#555566'], borderWidth:1 }] },
+      options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ labels:{ color:'#7878a0', font:{size:12} } } } }
+    });
+  }
+  function renderChurnChart(h, m, l) {
+    destroyChart('churn');
+    charts.churn = new Chart(document.getElementById('churnChart'), {
+      type:'doughnut', data:{ labels:['High risk','Medium risk','Low risk'], datasets:[{ data:[h,m,l], backgroundColor:['rgba(239,68,68,0.8)','rgba(245,158,11,0.8)','rgba(16,185,129,0.7)'], borderWidth:1 }] },
+      options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ labels:{ color:'#7878a0', font:{size:12} } } } }
+    });
+  }
+
+  function renderLogsTable(entries) {
+    const tbody = document.getElementById('logsTable');
+    if (!entries || !entries.length) {
+      tbody.innerHTML = '<tr><td colspan="4" class="empty-state"><div class="empty-state-icon">🔍</div>No activity logs found</td></tr>';
+      return;
+    }
+    tbody.innerHTML = entries.map(e => {
+      const t = e.ts ? new Date(e.ts).toLocaleTimeString('en-IN', {hour:'2-digit',minute:'2-digit',second:'2-digit'}) + ' ' + new Date(e.ts).toLocaleDateString('en-IN') : '—';
+      const actionColor = e.action==='payment'?'var(--amber)':e.action==='register'?'var(--green)':e.action==='limit'?'var(--red)':'var(--muted)';
+      return `<tr>
+        <td style="font-size:11px;color:var(--muted);white-space:nowrap;">${t}</td>
+        <td style="font-size:12px;">${e.userName||e.userEmail||e.uid||'—'}</td>
+        <td><span style="color:${actionColor};font-weight:600;font-size:12px;">${e.action||'—'}</span></td>
+        <td style="font-size:12px;color:var(--muted);">${e.detail||'—'}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  async function loadLogs() {
+    try {
+      const q = query(collection(db,'activityLogs'), orderBy('ts','desc'), limit(200));
+      const snap = await getDocs(q);
+      renderLogsTable(snap.docs.map(d=>d.data()));
+    } catch(e) {
+      // Fallback: derive activity from users collection
+      const synth = _users.slice(0,50).map(u => ({
+        ts: u.lastSeen || Date.now(),
+        userName: u.name||u.email||u.id,
+        action: u.isPremium ? 'premium' : 'active',
+        detail: `Plan: ${getPlanLabel(u)} · Messages: ${u.totalMessages||0}`
+      })).sort((a,b)=>b.ts-a.ts);
+      renderLogsTable(synth);
+    }
+  }
+
+  // Patch switchTab to load logs
+  const _origSwitch = window.switchTab;
+  window.switchTab = function(tab, btn) {
+    _origSwitch(tab, btn);
+    if (tab === 'logs') loadLogs();
+    if (tab === 'analytics') renderAnalyticsCharts();
+  };
+
+  async function renderAnalyticsCharts() {
+    // 30-day DAU
+    const labels30=[], data30=[], today=new Date();
+    for (let i=29;i>=0;i--) {
+      const d=new Date(today); d.setDate(d.getDate()-i);
+      const key=d.toISOString().slice(0,10);
+      labels30.push(i%5===0?key.slice(5):'');
+      try { const s=await getDoc(doc(db,'analytics/dau/'+key)); data30.push(s.exists()?(s.data().count||0):0); } catch(e){data30.push(0);}
+    }
+    destroyChart('dau30');
+    const c1 = document.getElementById('dauChart30');
+    if (c1) charts.dau30 = new Chart(c1, {
+      type:'line', data:{ labels:labels30, datasets:[{ label:'DAU', data:data30, borderColor:'#6C63FF', backgroundColor:'rgba(108,99,255,0.1)', tension:0.4, fill:true, pointRadius:1 }]},
+      options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:chartDefaults.scales }
+    });
+    // Premium growth (cumulative from user join dates)
+    const premUsers = _users.filter(u=>u.isPremium&&u.premiumActivatedAt).sort((a,b)=>a.premiumActivatedAt-b.premiumActivatedAt);
+    const pgLabels=[], pgData=[];
+    premUsers.forEach((u,i)=>{
+      pgLabels.push(new Date(u.premiumActivatedAt).toLocaleDateString('en-IN'));
+      pgData.push(i+1);
+    });
+    destroyChart('premiumGrowth');
+    const c2 = document.getElementById('premiumGrowthChart');
+    if (c2) charts.premiumGrowth = new Chart(c2, {
+      type:'line', data:{ labels:pgLabels, datasets:[{ label:'Cumulative Premium', data:pgData, borderColor:'#f59e0b', backgroundColor:'rgba(245,158,11,0.1)', tension:0.4, fill:true, pointRadius:1 }]},
+      options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:chartDefaults.scales }
+    });
+  }
+  function set(id, val) { const el = document.getElementById(id); if (el) el.textContent = val; }
+  function showError(msg) { const el = document.getElementById('errorMsg'); if(el){el.textContent='⚠️ '+msg; el.style.display='block';} }
+  function hideError() { const el = document.getElementById('errorMsg'); if(el) el.style.display='none'; }
+  function getWeekKey() {
+    const now = new Date(); const day = now.getDay();
+    const diff = (day === 0) ? -6 : 1 - day;
+    const mon = new Date(now); mon.setDate(now.getDate()+diff);
+    return mon.toISOString().slice(0,10);
+  }
+  function getPlanLabel(u) {
+    const p = u.premiumPlan||'premium';
+    const labels = { ssc:'SSC Pro', class10:'Class Pro', yearly:'All-in-One Yearly', class10_yearly:'Class Yearly',
+      semiannual:'SSC 6-Month', battle:'Battle Basic', battle_pro:'Battle Pro', battle_academy:'Battle Academy',
+      group_leader:'Group Leader', coaching_basic:'Coaching Starter', coaching_pro:'Coaching Pro', premium:'Premium' };
+    return labels[p]||p;
+  }
+</script>
+</body>
+</html>

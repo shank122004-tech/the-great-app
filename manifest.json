@@ -1,0 +1,10 @@
+{
+  "name": "CrackAI",
+  "short_name": "CrackAI",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0a0f",
+  "theme_color": "#6C63FF",
+  "description": "AI-powered SSC exam preparation with image & PDF solving",
+  "icons": []
+}
