@@ -1,5 +1,5 @@
 /**
- * battle-arena-patch.js — CrackAI Online Battle Arena v3.0
+ * battle-arena-patch.js — CrackAI Online Battle Arena v3.1
  * ═══════════════════════════════════════════════════════════════════
  *  FEATURES:
  *  1. Public Online Battle Arena — battles visible to ALL users
@@ -24,11 +24,19 @@
  * 20. Group Study: auto-delete messages when ALL members have read them
  *
  *  FIREBASE COST NOTES:
- *  - Uses getDoc polling (5s interval) NOT onSnapshot listeners
+ *  - Uses getDoc polling (1s active game, 4s list) NOT onSnapshot listeners
  *  - Battle documents are small (<5KB each)
- *  - Public battle list polls every 8s (only when arena is open)
+ *  - Public battle list polls every 4s (only when arena is open)
  *  - XP writes batched: only on answer submit
  *  - Weekly leaderboard reads once per open, not continuous
+ *
+ *  BUG FIXES v3.1:
+ *  - FIX 1: Countdown now shows for ALL users, not just admin
+ *  - FIX 2: Battle starts for all joined users (poll 3s → 1s)
+ *  - FIX 3: Next question shows instantly after answering (300ms re-poll)
+ *  - FIX 4: Coins correctly awarded + shown on winner screen
+ *  - FIX 5: Wrong answer deducts -3 XP (floor at 0)
+ *  - FIX 6: Finished battle auto-deleted after 30s, gone from arena list
  * ═══════════════════════════════════════════════════════════════════
  */
 
@@ -42,7 +50,7 @@
   const BATTLE_PROMO     = 'MU1R43PNZ889VKSZ';   // promo code for free battle access
   const QUESTIONS_PER_BATTLE = 10;
   const POLL_BATTLE_LIST = 4000;            // ms — public battle list refresh
-  const POLL_ACTIVE_GAME = 3000;            // ms — active battle question poll
+  const POLL_ACTIVE_GAME = 1000;            // ms — active battle question poll (1s for fast sync)
   const LS_PROMO_KEY     = 'sscai_battle_promo_unlocked';
   const LS_XP_BATTLE_KEY = 'sscai_battle_weekly_xp';
   const WEEKLY_REWARD_PLAN = 'battle_weekly_reward';
@@ -1096,11 +1104,17 @@
         if (data.status === 'generating') {
           this._renderGeneratingScreen();
         } else if (data.status === 'countdown') {
-          this._handleCountdown(data, battleId);
+          // FIX 1: allow countdown for ALL users, not just admin
+          if (!this._countdownShown) {
+            this._handleCountdown(data, battleId);
+          }
         } else if (data.status === 'active') {
-          this._renderBattleRoom(data);
+          // FIX 2: clear flag so next battle works
+          this._countdownShown = false;
+          this._renderActiveQuiz(data);
         } else if (data.status === 'finished') {
           this._stopPolling();
+          this._countdownShown = false;
           this._renderBattleWinner(data);
         } else {
           this._renderBattleRoom(data);
@@ -1468,40 +1482,56 @@
 
         const q = battle.questions[qi];
         const correct = chosenIdx === q.ans;
-        const xpEarned = correct ? 10 : 0;
-        const currentXP = (quiz.xp && quiz.xp[myUid]) || 0;
-        const nextIdx = qi + 1;
-        const isLast = nextIdx >= battle.questions.length;
+        // FIX 5: -3 XP for wrong answer (floor at 0)
+        const CORRECT_XP = 10;
+        const WRONG_XP   = -3;
+        const xpDelta    = correct ? CORRECT_XP : WRONG_XP;
+        const currentXP  = (quiz.xp && quiz.xp[myUid]) || 0;
+        const newXP      = Math.max(0, currentXP + xpDelta);
+        const nextIdx    = qi + 1;
+        const isLast     = nextIdx >= battle.questions.length;
 
         // Optimistic UI
         if (correct) {
-          toast('✅ Correct! +10 XP', 2000);
-          addBattleXP(10);
+          toast('✅ Correct! +' + CORRECT_XP + ' XP', 2000);
+          addBattleXP(CORRECT_XP);
         } else {
-          toast('❌ Wrong! Better luck next question.', 2000);
+          toast('❌ Wrong! ' + WRONG_XP + ' XP', 2000);
         }
 
         const updates = {
           ['quiz.answers.' + qi]: { uid: myUid, name: myName, chosen: chosenIdx, correct, ts: Date.now() },
-          ['quiz.xp.' + myUid]: currentXP + xpEarned,
+          ['quiz.xp.' + myUid]: newXP,
           ['quiz.current']: isLast ? qi : nextIdx,
           ['quiz.status']: isLast ? 'finished' : 'active',
         };
 
         if (isLast) {
           updates.status = 'finished';
+          // FIX 6: schedule auto-delete of finished battle after 30s
+          // so it disappears from the arena list for all users
+          setTimeout(async () => {
+            try {
+              const { doc: d2, deleteDoc } = window._firebaseFns;
+              await deleteDoc(d2(window._firebaseDb, 'publicBattles', battleId));
+            } catch(_) {}
+          }, 30000);
         }
 
         await updateDoc(doc(db, 'publicBattles', battleId), updates);
 
         // If last question, save to leaderboard
         if (isLast) {
-          const finalXP = currentXP + xpEarned;
-          await this._saveToLeaderboard(myUid, myName, finalXP);
+          await this._saveToLeaderboard(myUid, myName, newXP);
         }
 
       } catch(e) {
         toast('❌ Submit error. Check connection.', 2000);
+      }
+
+      // FIX 3: immediately re-poll so next question shows without delay
+      if (this._activeBattleId) {
+        setTimeout(() => this._pollGameBattle(this._activeBattleId), 300);
       }
     },
 
@@ -1515,8 +1545,43 @@
       const winner = sorted[0];
       const myUid = uid();
       const playerNames = battle.playerNames || {};
+      const players = (battle.players || []).length;
+
+      // FIX 4: award coins once per battle per user
+      const myRank = sorted.findIndex(([u]) => u === myUid);
+      let coinsWon = 0;
+      if (players >= 10) {
+        if (myRank === 0) coinsWon = 50;
+        else if (myRank === 1) coinsWon = 30;
+        else if (myRank === 2) coinsWon = 15;
+      } else if (players >= 5) {
+        if (myRank === 0) coinsWon = 50;
+        else if (myRank === 1) coinsWon = 30;
+      } else {
+        if (myRank === 0) coinsWon = 50;
+      }
+      const awardKey = 'ba_coins_' + (battle.id || this._activeBattleId) + '_' + myUid;
+      if (coinsWon > 0 && !localStorage.getItem(awardKey)) {
+        localStorage.setItem(awardKey, '1');
+        addCoins(coinsWon, 'Battle win 🏆');
+      }
+      // Sync coins display from Firestore
+      try {
+        const db = window._firebaseDb; const fns = window._firebaseFns;
+        const u = window._firebaseAuth?.currentUser;
+        if (db && fns && u) {
+          fns.getDoc(fns.doc(db, 'userCoins', u.uid)).then(snap => {
+            if (snap && snap.exists()) {
+              const sc = snap.data().coins || 0;
+              const badge = document.querySelector('.ba-coins-badge, #ba-coins-display');
+              if (badge) badge.textContent = '🪙 ' + sc;
+            }
+          }).catch(()=>{});
+        }
+      } catch(_) {}
 
       body.innerHTML = `
+        ${coinsWon > 0 ? `<div style="text-align:center;font-size:18px;font-weight:800;color:#f59e0b;margin-bottom:8px;">🪙 +${coinsWon} Coins Earned!</div>` : ''}
         <div class="ba-winner-wrap">
           <div class="ba-winner-trophy">${winner && winner[0] === myUid ? '🏆' : '🎯'}</div>
           <div class="ba-winner-title">Battle Over!</div>
