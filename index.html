@@ -162,42 +162,29 @@
 #authScreen *::after { box-sizing: border-box; }
 
 #authScreen {
+  /* Use fixed on desktop, but on mobile we rely on body scroll */
   position: fixed;
   inset: 0;
   z-index: 99000;
-  background: #ffffff;
+  background: #f5f4f0;
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-y: contain;
   font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
   color: #1c1c1e;
+  /* Critical: scroll starts at top */
   scroll-behavior: auto;
 }
 
-/* Mobile: ensure cai-layout grows to full content height so #authScreen can scroll it */
+/* On mobile, body must be scrollable when authScreen is absolute */
 @media (max-width: 640px) {
-  .cai-layout {
-    flex-direction: column !important;
-    min-height: max-content !important;
-    width: 100% !important;
-  }
-  .cai-left {
-    flex: none !important;
-    width: 100% !important;
-    height: auto !important;
-    padding: 32px 20px 24px !important;
-    border-right: none !important;
-    border-bottom: 1px solid #e5e2db !important;
-  }
-  .cai-right {
-    width: 100% !important;
-    padding: 24px 16px 60px !important;
-    height: auto !important;
-  }
-  .cai-btn-google {
-    font-size: 17px !important;
-    min-height: 60px !important;
+  html, body {
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    height: auto;
+    min-height: 100%;
   }
 }
 
@@ -528,20 +515,40 @@
    immediately without scrolling.
    ════════════════════════════════════════ */
 @media (max-width: 640px) {
-  /* authScreen is position:fixed with overflow-y:auto — it scrolls itself.
-     Do NOT touch html/body here — that breaks the chat app layout. */
+  /* On mobile: switch from fixed to absolute so the FULL page scrolls.
+     position:fixed clips content taller than the viewport — that is why
+     the logo/Google button were invisible. With absolute, the auth div
+     grows to fit all content and the page scrolls normally. */
+  #authScreen {
+    position: absolute !important;
+    top: 0 !important; left: 0 !important; right: 0 !important;
+    min-height: 100% !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  /* Force html/body to scroll on mobile and not clip authScreen */
+  html, body {
+    height: auto !important;
+    min-height: 100% !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    position: static !important;
+  }
 
   .cai-layout {
     flex-direction: column;
-    min-height: max-content;
-    height: auto;
+    min-height: auto !important;
+    height: auto !important;
   }
 
   .cai-left {
     flex: none !important;
     width: 100% !important;
+    min-height: auto !important;
     height: auto !important;
-    padding: 32px 20px 24px !important;
+    padding: 24px 20px 24px !important;
     justify-content: flex-start !important;
     align-items: stretch !important;
     border-right: none !important;
@@ -550,10 +557,10 @@
 
   .cai-right {
     width: 100%;
-    height: auto;
-    padding: 24px 16px 60px;
+    padding: 24px 16px 48px;
   }
 
+  /* ── Bigger, bolder Google button on phones ── */
   .cai-btn-google {
     font-size: 17px;
     padding: 18px 20px;
@@ -575,10 +582,10 @@
   .cai-logo-row { margin-bottom: 28px; }
   .cai-stats { margin-top: 24px; }
 
-  .cai-plan-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .cai-plan-grid { grid-template-columns: 1fr; gap: 10px; }
   .cai-plan-card { padding: 14px 12px; }
   .cai-plan-price { font-size: 18px; }
-  .cai-plan-card.battle-card { grid-column: span 2; grid-template-columns: 1fr; }
+  .cai-plan-card.battle-card { grid-column: span 1; grid-template-columns: 1fr; }
   .cai-battle-extras { display: none; }
 }
 
@@ -670,12 +677,11 @@
       <div class="cai-free-row">
         <div class="cai-free-title">Free — always free</div>
         <div class="cai-free-items">
-          <span class="cai-free-pill">10 messages/day</span>
-          <span class="cai-free-pill">2 image uploads</span>
-          <span class="cai-free-pill">1 PDF/day</span>
           <span class="cai-free-pill">All SSC + Class modes</span>
           <span class="cai-free-pill">Voice input</span>
+          <span class="cai-free-pill">AI chat</span>
           <span class="cai-free-pill">Battle join (free)</span>
+          <span class="cai-free-pill">Image &amp; PDF solving</span>
         </div>
       </div>
 
@@ -690,9 +696,9 @@
           <div class="cai-plan-price">₹199<span>/mo</span></div>
           <div class="cai-plan-features">
             <div class="cai-plan-feat">Unlimited messages</div>
-            <div class="cai-plan-feat">Unlimited images & PDFs</div>
-            <div class="cai-plan-feat">Vision Pro AI</div>
-            <div class="cai-plan-feat">All SSC exams</div>
+            <div class="cai-plan-feat">Unlimited images &amp; PDFs</div>
+            <div class="cai-plan-feat">All 5 SSC exams</div>
+            <div class="cai-plan-feat">AI Teacher Voice Mode</div>
             <div class="cai-plan-feat">Priority speed</div>
           </div>
         </div>
@@ -705,8 +711,34 @@
           <div class="cai-plan-features">
             <div class="cai-plan-feat">Unlimited messages</div>
             <div class="cai-plan-feat">Class 1–12 all streams</div>
-            <div class="cai-plan-feat">Images & PDFs</div>
+            <div class="cai-plan-feat">Images &amp; PDFs</div>
             <div class="cai-plan-feat">NCERT + Board prep</div>
+          </div>
+        </div>
+
+        <!-- SSC 6-Month -->
+        <div class="cai-plan-card">
+          <span class="cai-plan-badge amber">SAVE ₹695</span>
+          <span class="cai-plan-emoji">🔥</span>
+          <span class="cai-plan-name">SSC 6-Month</span>
+          <div class="cai-plan-price">₹499<span>/6mo</span></div>
+          <div class="cai-plan-features">
+            <div class="cai-plan-feat">Everything in SSC Pro</div>
+            <div class="cai-plan-feat">Just ₹83/month</div>
+            <div class="cai-plan-feat">Priority support</div>
+          </div>
+        </div>
+
+        <!-- Coaching Plans -->
+        <div class="cai-plan-card">
+          <span class="cai-plan-emoji">🏫</span>
+          <span class="cai-plan-name">Coaching Plans</span>
+          <div class="cai-plan-price">₹99<span>–₹999/mo</span></div>
+          <div class="cai-plan-features">
+            <div class="cai-plan-feat">Group Leader · ₹99/mo</div>
+            <div class="cai-plan-feat">Coaching Starter · ₹499/mo</div>
+            <div class="cai-plan-feat">Coaching Pro · ₹999/mo</div>
+            <div class="cai-plan-feat">Students join FREE</div>
           </div>
         </div>
 
@@ -715,12 +747,12 @@
           <div class="cai-plan-left">
             <span class="cai-plan-emoji">⚔️</span>
             <span class="cai-plan-name">Battle Creator</span>
-            <div class="cai-plan-price">₹99<span>/mo</span></div>
+            <div class="cai-plan-price">₹99<span>–₹499/mo</span></div>
             <div class="cai-plan-features" style="margin-top:7px;">
-              <div class="cai-plan-feat">Host 10 battles/month</div>
-              <div class="cai-plan-feat">AI-generated quiz questions</div>
-              <div class="cai-plan-feat">Up to 10 players/battle</div>
-              <div class="cai-plan-feat">Live XP leaderboard</div>
+              <div class="cai-plan-feat">Basic · ₹99 — 10 battles/mo</div>
+              <div class="cai-plan-feat">Pro · ₹299 — 100 battles/mo</div>
+              <div class="cai-plan-feat">Academy · ₹499 — Unlimited</div>
+              <div class="cai-plan-feat">All users join battles FREE</div>
             </div>
           </div>
           <div class="cai-battle-extras">
@@ -744,7 +776,7 @@
         <div class="cai-yearly-left">
           <span class="cai-plan-badge amber" style="position:static;display:inline-block;margin-bottom:6px;">BEST VALUE</span>
           <div class="cai-yearly-name">🌟 All-in-One Yearly</div>
-          <div class="cai-yearly-desc">Everything included · ₹83/month effective<br>Saves ₹1,389 vs monthly billing</div>
+          <div class="cai-yearly-desc">SSC + Class + Battle + Groups · ₹83/month effective<br>Saves ₹1,389 vs monthly billing</div>
         </div>
         <div class="cai-yearly-right">
           <span class="cai-yearly-price">₹999<span style="font-size:11px;font-weight:400;color:rgba(255,255,255,0.4);margin-left:2px;">/yr</span></span>
@@ -2248,31 +2280,39 @@ window.openPrivacyFromAuth = function() {
       if (m) m.classList.add('active');
     }, 250);
   };
-
   var authEl = document.getElementById('authScreen');
 
-  /* authScreen is position:fixed with overflow-y:auto — it handles
-     its own scrolling. We must NOT touch body/html position or overflow
-     because that breaks the chat app layout when auth is dismissed.
-     Just ensure the authScreen itself is correctly set up. */
-  function ensureAuthScroll() {
+  function fixMobileScroll() {
     if (!authEl || authEl.classList.contains('hidden')) return;
-    // Force the authScreen element to scroll internally
-    authEl.style.overflowY = 'auto';
-    authEl.style.webkitOverflowScrolling = 'touch';
+    if (window.innerWidth > 640) return;
+    // Ensure body/html are not locked by app.js overflow:hidden
+    document.documentElement.style.overflow = 'auto';
+    document.documentElement.style.height = 'auto';
+    document.body.style.overflow = 'auto';
+    document.body.style.height = 'auto';
+    document.body.style.position = 'static';
     authEl.scrollTop = 0;
+    window.scrollTo(0, 0);
   }
 
   if (authEl && window.MutationObserver) {
     new MutationObserver(function() {
       if (!authEl.classList.contains('hidden')) {
-        ensureAuthScroll();
+        fixMobileScroll();
+        // Reset scroll position whenever auth screen is shown
+        authEl.scrollTop = 0;
+        window.scrollTo(0, 0);
+        document.documentElement.scrollTop = 0;
+        document.body.scrollTop = 0;
       }
     }).observe(authEl, { attributes: true, attributeFilter: ['class'] });
   }
 
+  // Also reset on initial load
   if (authEl && !authEl.classList.contains('hidden')) {
-    ensureAuthScroll();
+    fixMobileScroll();
+    authEl.scrollTop = 0;
+    window.scrollTo(0, 0);
   }
 })();
 </script>
