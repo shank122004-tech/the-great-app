@@ -5,7 +5,7 @@
 
 // ── API endpoints ─────────────────────────────────────────────
 // DeepSeek — text AI (Cloud Run direct URL)
-const DEEPSEEK_API_URL = '/api/deepseek';
+const DEEPSEEK_API_URL = 'https://deepseek-56khnynjia-uc.a.run.app';
 // Gemini Flash — image/vision only (Firebase function proxy)
 const GEMINI_PROXY_URL  = 'https://geminivision-56khnynjia-uc.a.run.app';
 const DEEPSEEK_MODEL = 'deepseek-chat'; // default fallback
