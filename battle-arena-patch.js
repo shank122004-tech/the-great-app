@@ -658,7 +658,7 @@
       if (!body) return;
 
       // Filter out battles the user has quit — never show them again
-      battles = (battles || []).filter(b => !hasQuitBattle(b.id));
+      battles = (battles || []).filter(b => !window._hasQuitBattle(b.id));
 
       const isCreator = isBattleCreator();
       const usage = getBattleCreatorUsage();
@@ -1547,8 +1547,8 @@
         // Only non-creators get their slot freed and the battle hidden from them.
         const isCreator = this._lastBattleData && this._lastBattleData.creatorUid === myUid;
         if (!isCreator) {
-          markBattleQuit(battleId);
-          removePlayerFromBattle(battleId);
+          window._markBattleQuit(battleId);
+          window._removePlayerFromBattle(battleId);
         }
       }
       this._stopPolling();
@@ -2123,6 +2123,10 @@ Return ONLY a valid JSON array, no markdown, no explanation:
     return getQuitList().includes(battleId);
   }
 
+  // Expose on window so the first IIFE can call these across scope
+  window._hasQuitBattle = hasQuitBattle;
+  window._markBattleQuit = markBattleQuit;
+
   /* Remove player from Firestore when they leave the waiting room */
   async function removePlayerFromBattle(battleId) {
     if (!battleId) return;
@@ -2145,6 +2149,8 @@ Return ONLY a valid JSON array, no markdown, no explanation:
       await updateDoc(doc(db, 'publicBattles', battleId), updates);
     } catch (_) {}
   }
+
+  window._removePlayerFromBattle = removePlayerFromBattle;
 
   /* ─────────────────────────────────────────────────────────────
    * 3. COSMETICS STORE DATA
