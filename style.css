@@ -2282,17 +2282,21 @@ body {
 }
 
 /* ===== AUTH SCREEN ===== */
+/* Note: #authScreen in index.html inline styles takes priority.
+   This .auth-screen class is a legacy fallback — force white so dark
+   theme never leaks through. */
 .auth-screen {
   position: fixed;
   inset: 0;
   z-index: 9000;
-  background: var(--bg-primary);
+  background: #ffffff !important;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   min-height: 100%;
-  padding: 20px 16px 40px;
+  padding: 0;
 }
 
 .auth-bg {
